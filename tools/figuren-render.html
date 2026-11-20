@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Figuren rendern</title>
+<style>
+  body { margin: 0; background: #2a2340; color: #ece6ff; font: 14px system-ui, sans-serif; padding: 16px; }
+  canvas { background: repeating-conic-gradient(#3a3355 0 25%, #2f2947 0 50%) 0 0 / 20px 20px; display: block; margin: 10px 0; }
+  label { margin-right: 12px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<h3>Figuren aus 3D-Modellen rendern</h3>
+<p>Lädt <code>modelle/&lt;figur&gt;.glb</code> und zeigt die Figur schräg von der Seite: Helden schauen nach rechts, Gegner nach links.</p>
+<div>
+  <label>Figur <select id="fig"></select></label>
+  <label>Drehung <input id="rot" type="range" min="-90" max="90" value="35"> <span id="rotv"></span>°</label>
+  <button id="save">Als PNG speichern</button>
+</div>
+<canvas id="c"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const HEROES = ['magierin', 'waechter', 'orakel'];
+const ALL = [...HEROES, 'tintenfleck', 'rostwaechter', 'fehlerteufel', 'schwarmbiene', 'schleifenschlange', 'verzweiger'];
+const sel = document.getElementById('fig');
+sel.innerHTML = ALL.map((f) => `<option>${f}</option>`).join('');
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(2);   // doppelte Auflösung für scharfe Figuren
+const scene = new THREE.Scene();
+const hemi = new THREE.HemisphereLight(0xffffff, 0x554466, 2.2);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(2, 4, 5);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xb9a6ff, 0.9);
+rim.position.set(-4, 3, -3);
+scene.add(rim);
+const camera = new THREE.PerspectiveCamera(22, 1, 0.01, 100);
+const loader = new GLTFLoader();
+let model = null;
+let current = null;
+
+function size(fig) { return fig === 'verzweiger' ? [640, 720] : [480, 560]; }
+
+/** Rendert eine Figur. Grad > 0 dreht die Front nach rechts. */
+window.renderFig = async (fig, deg, licht = 1) => {
+  hemi.intensity = 2.2 * licht; key.intensity = 1.6 * licht; rim.intensity = 0.9 * licht * 1.6;
+  if (deg === undefined) deg = HEROES.includes(fig) ? 35 : -35;
+  document.getElementById('rot').value = deg;
+  document.getElementById('rotv').textContent = deg;
+  sel.value = fig;
+  if (current !== fig) {
+    if (model) scene.remove(model);
+    const gltf = await loader.loadAsync(`modelle/${fig}.glb`);
+    model = new THREE.Group();
+    const inner = gltf.scene;
+    const box = new THREE.Box3().setFromObject(inner);
+    const c = box.getCenter(new THREE.Vector3());
+    inner.position.sub(c);                       // Mitte in den Ursprung
+    model.add(inner);
+    model.userData.h = box.max.y - box.min.y;
+    model.userData.r = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+    scene.add(model);
+    current = fig;
+  }
+  model.rotation.y = THREE.MathUtils.degToRad(deg);
+  const [w, h] = size(fig);
+  renderer.setSize(w, h, false);
+  canvas.style.width = `${w}px`;
+  camera.aspect = w / h;
+  // Kamera so weit weg, dass die Figur mit kleinem Rand hineinpasst
+  const fit = Math.max(model.userData.h, model.userData.r * h / w) * 1.08;
+  const dist = fit / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  camera.position.set(0, model.userData.h * 0.06, dist);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  return `${fig} ${deg}°`;
+};
+
+/** Schneidet transparente Ränder ab und schickt das Bild an den lokalen Speicherdienst. */
+window.saveFig = async () => {
+  const src = canvas;
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.canvas.width = src.width; ctx.canvas.height = src.height;
+  ctx.drawImage(src, 0, 0);
+  const d = ctx.getImageData(0, 0, src.width, src.height).data;
+  let x0 = src.width, y0 = src.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < src.height; y++) for (let x = 0; x < src.width; x++) {
+    if (d[(y * src.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  const out = document.createElement('canvas');
+  out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+  out.getContext('2d').drawImage(src, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  const blob = await new Promise((r) => out.toBlob(r, 'image/png'));
+  const res = await fetch(`http://localhost:8766/${current}.png`, { method: 'POST', body: blob });
+  return `${current}: ${out.width}x${out.height}, ${res.status}`;
+};
+
+sel.addEventListener('change', () => window.renderFig(sel.value));
+document.getElementById('rot').addEventListener('input', (e) => window.renderFig(current, Number(e.target.value)));
+document.getElementById('save').addEventListener('click', async () => alert(await window.saveFig()));
+</script>
+</body>
+</html>
