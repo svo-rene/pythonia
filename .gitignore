@@ -1,2 +1,3 @@
 tools/modelle/
 __pycache__/
+.claude/

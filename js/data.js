@@ -208,12 +208,12 @@ export const TALENTS = {
 export const MAP_PLAN = [
   { typ: 'kampf', pool: ['tinte', 'rost'] },
   { zufall: { kampf: 3, haendler: 1 }, pool: ['tinte', 'rost', 'teufel'] },
-  { typ: 'schmiede', forges: ['vergeltung', 'aderlass'] },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['tinte', 'rost', 'teufel'], forges: ['vergeltung', 'aderlass'] },
   { zufall: { kampf: 3, elite: 2, rast: 1 }, pool: ['teufel', 'rost', 'tinte'] },
   { zufall: { haendler: 1, rast: 1 } },
-  { typ: 'debug' },
+  { zufall: { debug: 1, kampf: 1, rast: 1 }, pool: ['teufel', 'rost', 'tinte'] },
   { zufall: { kampf: 3, elite: 1 }, pool: ['biene_tinte', 'rost_biene', 'teufel'] },
-  { typ: 'schmiede', forges: ['trommelfeuer', 'flaechenbrand'] },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['biene_tinte', 'rost_biene', 'teufel'], forges: ['trommelfeuer', 'flaechenbrand'] },
   { zufall: { kampf: 2, haendler: 1 }, pool: ['biene_tinte', 'rost_biene'] },
   { typ: 'rast' },
 ];

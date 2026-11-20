@@ -391,11 +391,7 @@ function render() {
     </div>`;
   }).join('');
 
-  const panel = v
-    ? `<div class="run-panel"><div class="panel-title">${v.kind === 'card' ? 'Zauber' : 'Gegner'}: ${esc(v.name)}</div>
-        ${codeView(v.code, { active: v.line, error: v.errorLine })}
-        <div class="panel-title">Variablen</div>${varsView(v.vars, v.prev, HIDE_VARS)}</div>`
-    : selectedPanel();
+  const { left, right } = sidePanels(v);
 
   const hand = C.hand.map((uid) => {
     const def = cardDef(cardByUid(uid));
@@ -408,7 +404,8 @@ function render() {
   const casting = v?.kind === 'card';
   app().innerHTML = `
   <div class="combat">
-    <div class="stage ${C.kind}">
+    <div class="stage ${C.kind} foes-${C.enemies.length}">
+      <div class="side-panel left">${left}</div>
       <div class="fighter hero ${casting ? 'casting' : ''} ${pHit.cls}">
         <div class="over">
           <div class="hero-top">
@@ -426,10 +423,10 @@ function render() {
         <div class="fig" style="${bob()}">${heroSprite(run.hero)}${pHit.pop}</div>
         <div class="fname">${esc(heroName)}</div>
       </div>
-      <div class="stage-center">${panel}</div>
       <div class="foes">${enemies}</div>
+      <div class="side-panel right">${right}</div>
     </div>
-    <div class="msg">${C.message || (C.busy ? '' : 'Tippe auf einen Gegner, um ihn als Ziel zu wählen, und auf eine Karte, um sie anzusehen.')}</div>
+    <div class="msg">${!C.busy && C.selected ? selectedBar() : (C.message || (C.busy ? '' : 'Tippe auf einen Gegner, um ihn als Ziel zu wählen, und auf eine Karte, um sie auszuwählen.'))}</div>
     <div class="hand-row">
       <div class="pile" title="Ziehstapel"><b>${C.draw.length}</b><small>Ziehstapel</small></div>
       <div class="hand">${hand || '<div class="empty-hand">Keine Karten auf der Hand.</div>'}</div>
@@ -454,25 +451,57 @@ function render() {
   app().querySelector('.predict')?.addEventListener('click', () => askPrediction(C.selected));
 }
 
-function selectedPanel() {
-  if (!C.selected) {
-    const t = C.enemies[C.target];
-    return `<div class="run-panel"><div class="panel-title">Spielzustand</div>
-      ${varsView({ ...baseVars(), hand: C.hand.map((u) => cardDef(cardByUid(u)).name) }, null, HIDE_VARS)}
-      <p class="hint">Das sind die Variablen, die deine Karten lesen und ändern. Ziel ist gerade: <b>${esc(t?.name ?? '–')}</b>.</p></div>`;
+// Variablen der Gegnerseite: Sie stehen rechts neben den Gegnern, alles andere links neben dem Helden.
+const isFoeKey = (k) => k.startsWith('ziel_') || k.startsWith('gegner_');
+const HERO_KEYS_IN_ENEMY_CODE = ['leben', 'block'];
+
+function splitVars(vars, foeSide) {
+  const l = {}, r = {};
+  for (const [k, val] of Object.entries(vars ?? {})) (foeSide(k) ? r : l)[k] = val;
+  return [l, r];
+}
+
+/** Linke Tafel: deine Werte (und der Zauber, der gerade läuft). Rechte Tafel: die Werte der Gegner. */
+function sidePanels(v) {
+  if (v?.kind === 'card') {
+    const [l, r] = splitVars(v.vars, isFoeKey);
+    const [pl, pr] = splitVars(v.prev, isFoeKey);
+    return {
+      left: `<div class="run-panel"><div class="panel-title">Zauber: ${esc(v.name)}</div>
+        ${codeView(v.code, { small: true, active: v.line, error: v.errorLine })}
+        <div class="panel-title">Deine Werte</div>${varsView(l, v.prev ? pl : null, HIDE_VARS)}</div>`,
+      right: `<div class="run-panel"><div class="panel-title">Gegner-Werte</div>${varsView(r, v.prev ? pr : null, HIDE_VARS)}</div>`,
+    };
   }
+  if (v?.kind === 'enemy') {
+    const foeSide = (k) => !HERO_KEYS_IN_ENEMY_CODE.includes(k);
+    const [l, r] = splitVars(v.vars, foeSide);
+    const [pl, pr] = splitVars(v.prev, foeSide);
+    return {
+      left: `<div class="run-panel"><div class="panel-title">Deine Werte</div>${varsView(l, v.prev ? pl : null, HIDE_VARS)}</div>`,
+      right: `<div class="run-panel"><div class="panel-title">${esc(v.name)} rechnet</div>${varsView(r, v.prev ? pr : null, HIDE_VARS)}</div>`,
+    };
+  }
+  const [l, r] = splitVars({ ...baseVars(), hand: undefined }, isFoeKey);
+  delete l.hand;
+  const t = C.enemies[C.target];
+  return {
+    left: `<div class="run-panel"><div class="panel-title">Deine Werte</div>${varsView(l, null, HIDE_VARS)}</div>`,
+    right: `<div class="run-panel"><div class="panel-title">Gegner-Werte</div>${varsView(r, null, HIDE_VARS)}
+      <p class="hint small">ziel = <b>${esc(t?.name ?? '–')}</b></p></div>`,
+  };
+}
+
+/** Leiste unter der Bühne, wenn eine Karte ausgewählt ist. */
+function selectedBar() {
   const def = cardDef(cardByUid(C.selected));
   const cost = def.cost === 'X' ? 0 : def.cost;
   const can = cost <= C.energie;
   const m = metricFor(def);
-  return `<div class="run-panel"><div class="panel-title">${esc(def.name)} · Kosten ${esc(def.cost)}</div>
-    ${codeView(def.code)}
-    ${game.meta.settings.lesehilfe ? `<p class="hint">${esc(def.text)}</p>` : ''}
-    <div class="row">
-      <button class="btn play" ${can ? '' : 'disabled'}>Ausspielen</button>
-      <button class="btn predict secondary" ${can && C.predictionsLeft > 0 ? '' : 'disabled'}>🔮 Vorhersagen</button>
-    </div>
-    <p class="hint small">Vorhersage: ${esc(m.frage)} Richtig = Volltreffer (×1,5).</p></div>`;
+  return `<div class="sel-bar"><b>${esc(def.name)}</b>
+    <button class="btn play" ${can ? '' : 'disabled'}>Ausspielen</button>
+    <button class="btn predict secondary" ${can && C.predictionsLeft > 0 ? '' : 'disabled'}>🔮 Vorhersagen</button>
+    <span class="hint small">${can ? `Vorhersage: ${esc(m.frage)} Richtig = ×1,5.` : 'Zu wenig Energie.'}</span></div>`;
 }
 
 function askPrediction(uid) {

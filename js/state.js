@@ -146,9 +146,18 @@ function generateMap() {
       const node = { id, r, c, typ, x: ((c + 0.5) / MAP_COLS) * 100 + (rng() * 8 - 4), y: rng() * 16 - 8 };
       if (typ === 'kampf') node.enc = pick(plan.pool);
       if (typ === 'elite') node.enc = 'schlange';
-      if (typ === 'schmiede') node.forge = plan.forges[i % plan.forges.length];
       nodes[id] = node;
     });
+    // Schmiede-Reihen: mindestens eine Schmiede, damit man sie ansteuern kann, aber keine Pflicht
+    if (plan.forges) {
+      const row = ids.map((id) => nodes[id]);
+      if (!row.some((n) => n.typ === 'schmiede')) {
+        const n = row[Math.floor(rng() * row.length)];
+        n.typ = 'schmiede';
+        delete n.enc;
+      }
+      row.filter((n) => n.typ === 'schmiede').forEach((n, k) => { n.forge = plan.forges[k % plan.forges.length]; });
+    }
   }
   nodes.boss = { id: 'boss', r: rows, c: 2, typ: 'boss', enc: 'boss', x: 50, y: 0 };
   const edgeList = [...edges].map((e) => e.split('>'));
