@@ -10,6 +10,7 @@ import { loadNatter } from './natter.js';
 import { startCombat, rerenderCombat } from './combat.js';
 import { forgeRoom, debugRoom, shopRoom, restRoom, rewardScreen } from './rooms.js';
 import { app, esc, modal, toast, cardView, codeView } from './ui.js';
+import { weltkarteSVG, ORTE as KARTEN_ORTE, KARTE_B, KARTE_H } from './weltkarte.js';
 
 // ---------- Kopfleiste ----------
 function topbar() {
@@ -176,31 +177,49 @@ function showHeroSelect(start = { act: 1, world: 'haupt' }) {
 function showWorldMap() {
   topbar();
   const m = game.meta;
-  const acts = Object.entries(ACTS).map(([n, a]) => {
+  const orte = {};
+  const status = {};
+  Object.entries(ACTS).forEach(([n, a]) => {
     const num = Number(n);
     const done = m.actsDone.includes(num);
     const open = !a.bald && (num === 1 || m.actsDone.includes(num - 1));
-    const state = a.bald ? 'bald' : done ? 'done' : open ? 'open' : 'locked';
-    const sides = Object.entries(WORLDS).filter(([, w]) => w.nach === num).map(([id, w]) => {
-      const wopen = m.actsDone.includes(w.nach);
-      const wdone = m.worldsDone.includes(id);
-      return `<button class="world-node side ${wdone ? 'done' : wopen ? 'open' : 'locked'}" ${wopen ? `data-world="${id}"` : 'disabled'}>
-        <span class="wn-icon">${w.icon}</span><b>${esc(w.name)}${wdone ? ' ✔' : ''}</b>
-        <small>${wopen ? esc(w.text) : `🔒 nach Akt ${w.nach}`}</small></button>`;
-    }).join('');
-    return `<div class="world-row">
-      <button class="world-node main ${state}" ${open ? `data-act="${num}"` : 'disabled'}>
-        <span class="wn-icon">${num}</span><b>Akt ${num}: ${esc(a.name)}${done ? ' ✔' : ''}</b>
-        <small>${esc(a.thema)}${a.bald ? ' · kommt bald' : !open ? ` · 🔒 nach Akt ${num - 1}` : ''}</small></button>
-      ${sides ? `<div class="world-sides">${sides}</div>` : ''}</div>`;
-  }).join('<div class="world-link"></div>');
+    const id = 'akt' + num;
+    status[id] = done ? 'done' : open ? 'open' : 'locked';
+    orte[id] = { titel: a.name, kurz: a.name.replace(/^(Die|Der|Das) /, ''), nr: num, text: a.thema, zeichen: num,
+      sperre: a.bald ? 'kommt bald' : `🔒 öffnet sich nach Akt ${num - 1}`, start: () => showHeroSelect({ act: num, world: 'haupt' }) };
+  });
+  Object.entries(WORLDS).forEach(([id, w]) => {
+    const open = m.actsDone.includes(w.nach);
+    status[id] = m.worldsDone.includes(id) ? 'done' : open ? 'open' : 'locked';
+    orte[id] = { titel: w.name, kurz: w.name.replace(/^(Die|Der|Das) /, ''), text: w.text, zeichen: w.icon, frei: true,
+      sperre: `🔒 öffnet sich nach Akt ${w.nach}`, start: () => showHeroSelect({ act: w.level, world: id }) };
+  });
+  const knoepfe = Object.entries(KARTEN_ORTE).filter(([id]) => orte[id]).map(([id, p]) => {
+    const o = orte[id];
+    return `<button class="wk-ort ${o.frei ? 'frei' : 'haupt'} ${status[id]}" data-ort="${id}" style="left:${(p.lx / KARTE_B) * 100}%;top:${(p.ly / KARTE_H) * 100}%">
+      <span class="wk-nr">${o.zeichen}</span>${esc(o.kurz)}${status[id] === 'done' ? ' ✔' : status[id] === 'locked' ? ' 🔒' : ''}</button>`;
+  }).join('');
   app().innerHTML = `<div class="worldmap">
     <h2>🗺 Weltkarte</h2>
-    <p class="hint">Links der <b>Lernweg</b>: Jeder geschaffte Akt öffnet den nächsten. Rechts zweigen <b>freie Welten</b> ab, in denen du spielen kannst, wie du willst.</p>
-    <div class="world-list">${acts}</div>
+    <p class="hint">Folge dem <b>goldenen Weg</b>: Jeder geschaffte Akt öffnet den nächsten. Die schmalen Nebenwege führen zu <b>freien Welten</b>, in denen du spielen kannst, wie du willst.</p>
+    <div class="wk">${weltkarteSVG(status)}${knoepfe}</div>
+    <div class="wk-info" aria-live="polite"></div>
     <div class="row center"><button class="btn secondary back">Zurück</button></div></div>`;
-  app().querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => showHeroSelect({ act: Number(b.dataset.act), world: 'haupt' })));
-  app().querySelectorAll('[data-world]').forEach((b) => b.addEventListener('click', () => showHeroSelect({ act: WORLDS[b.dataset.world].level, world: b.dataset.world })));
+  const info = app().querySelector('.wk-info');
+  const waehle = (id) => {
+    const o = orte[id];
+    const st = status[id];
+    app().querySelectorAll('[data-ort]').forEach((el) => el.classList.toggle('aktiv', el.dataset.ort === id));
+    info.innerHTML = `<span class="wk-nr gross ${o.frei ? 'frei' : ''}">${o.zeichen}</span>
+      <div><b>${o.frei ? 'Freie Welt' : `Akt ${o.nr}`}: ${esc(o.titel)}${st === 'done' ? ' ✔' : ''}</b>
+      <p>${esc(o.text)}</p>${st === 'locked' ? `<p class="wk-sperre">${esc(o.sperre)}</p>` : ''}</div>
+      ${st !== 'locked' ? `<button class="btn ${st === 'done' ? 'secondary' : ''} wk-los">${st === 'done' ? 'Nochmal spielen' : 'Betreten'}</button>` : ''}`;
+    info.querySelector('.wk-los')?.addEventListener('click', o.start);
+  };
+  app().querySelectorAll('[data-ort]').forEach((el) => el.addEventListener('click', () => waehle(el.dataset.ort)));
+  const ziel = Object.keys(orte).find((id) => id.startsWith('akt') && status[id] === 'open')
+    ?? Object.keys(orte).find((id) => status[id] === 'open') ?? 'akt1';
+  waehle(ziel);
   app().querySelector('.back').addEventListener('click', showTitle);
 }
 

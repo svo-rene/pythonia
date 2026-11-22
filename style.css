@@ -482,3 +482,41 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
   .stage.foes-3 .foe, .stage.foes-4 .foe { width: auto; flex: 1 1 0; min-width: 140px; max-width: 230px; }
 }
 .card[data-steps] .card-head { padding-right: 36px; }
+
+/* Gezeichnete Weltkarte */
+.worldmap { max-width: 1040px; }
+.wk { position: relative; margin: 12px auto; max-width: max(560px, calc((100vh - 270px) * 1.515)); border-radius: 16px; overflow: hidden; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
+.wk-svg { display: block; width: 100%; height: auto; }
+.wk-weg { fill: none; stroke: #6b5a3a; stroke-width: 7; stroke-linecap: round; stroke-dasharray: 2 14; }
+.wk-weg.frei { stroke: #ffcc4d; filter: drop-shadow(0 0 4px rgba(255, 204, 77, 0.6)); }
+.wk-nebenweg { fill: none; stroke: #4a4466; stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 1 9; }
+.wk-nebenweg.frei { stroke: #7ee0c3; }
+.wk-zeichen { cursor: pointer; transition: transform 0.2s; }
+.wk-zeichen.locked > :not(.wk-nebel) { filter: url(#wk-grau); opacity: 0.45; }
+.wk-nebel { fill: #2a2346; opacity: 0.85; filter: url(#wk-weich); pointer-events: none; }
+.wk-zeichen.aktiv { filter: drop-shadow(0 0 10px rgba(255, 204, 77, 0.55)); }
+.wk-zeichen.open:not(.locked) .wk-glimmen { animation: wk-puls 2.2s ease-in-out infinite; }
+.wk-flamme { animation: wk-flackern 0.9s ease-in-out infinite alternate; transform-origin: -60px 2px; transform-box: view-box; }
+.wk-kristall { animation: wk-puls 2.6s ease-in-out infinite; }
+.wk-augen { animation: wk-blinzeln 5s infinite; }
+@keyframes wk-puls { 50% { opacity: 0.45; } }
+@keyframes wk-flackern { to { transform: scale(0.85, 1.12); } }
+@keyframes wk-blinzeln { 0%, 92%, 100% { opacity: 1; } 95% { opacity: 0; } }
+.wk-ort { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: clamp(10px, 1.35vw, 14px); font-weight: 700; color: var(--text); cursor: pointer;
+  background: rgba(27, 21, 51, 0.88); border: 2px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 4px; }
+.wk-ort .wk-nr { width: 1.7em; height: 1.7em; border-radius: 50%; display: grid; place-items: center; font-weight: 900; background: var(--bg2); }
+.wk-ort.haupt .wk-nr, .wk-nr.gross { background: linear-gradient(#ffe08a, #e09a2a); color: #2a1800; }
+.wk-nr.gross.frei { background: var(--bg2); }
+.wk-ort.open.haupt { border-color: var(--accent); box-shadow: 0 0 12px rgba(255, 204, 77, 0.45); }
+.wk-ort.open.frei { border-color: var(--accent2); }
+.wk-ort.done { border-color: var(--good); }
+.wk-ort.locked { opacity: 0.6; }
+.wk-ort.aktiv { outline: 3px solid #fff; outline-offset: 1px; }
+.wk-ort:focus-visible { outline: 3px solid var(--accent); }
+.wk-info { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; min-height: 76px; }
+.wk-info > div { flex: 1; min-width: 0; }
+.wk-info p { margin: 3px 0 0; color: var(--muted); font-size: 0.92em; }
+.wk-info .wk-sperre { color: var(--text); }
+.wk-nr.gross { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 1.4em; }
+@media (max-width: 640px) { .wk-ort { padding: 1px 6px 1px 2px; gap: 3px; } .wk-ort .wk-nr { width: 1.5em; height: 1.5em; } .wk-info { flex-wrap: wrap; } }
