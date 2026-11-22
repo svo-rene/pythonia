@@ -1,4 +1,4 @@
-# Zauberlehrling (Prototyp)
+# Pythonia – Die Höhle der Verzweigungen (Prototyp)
 
 Ein Roguelike-Deckbuilder für den Informatikunterricht: Die Karten sind Python-Code. Im Kampf liest man Code, in der Schmiede schreibt man ihn, im Debug-Raum repariert man Bugs. Python läuft im Browser über [Natter](https://github.com/wi-wissen/Natter) (`@natterjs/core` 0.2.0 von jsDelivr).
 
@@ -7,10 +7,10 @@ Ein Roguelike-Deckbuilder für den Informatikunterricht: Die Karten sind Python-
 Die Seite braucht einen kleinen Webserver (ES-Module laufen nicht über `file://`):
 
 ```powershell
-py -m http.server 8765 --directory zauberlehrling
+py -m http.server 8765
 ```
 
-Dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nötig, weil Natter von jsDelivr geladen wird. Zum Hosten reicht jeder statische Webspace (z. B. GitHub Pages).
+(im Projektordner starten) und dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nötig, weil Natter von jsDelivr geladen wird. Zum Hosten reicht jeder statische Webspace (z. B. GitHub Pages).
 
 ## Inhalt des Prototyps (Akt 1)
 

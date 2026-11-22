@@ -377,3 +377,5 @@ table.trace table.vars { font-size: 12px; }
 .mentor { font-style: italic; color: var(--accent2); }
 .good-note { color: var(--good); font-weight: 700; }
 @media (max-width: 800px) { .review-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.title-screen .subtitle { margin: -10px 0 14px; font-size: 1.25em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); }

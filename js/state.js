@@ -1,7 +1,7 @@
 // Spielstand: dauerhafte Daten (meta) und der laufende Run (run). Gespeichert im Browser.
 import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_PLAN, MAP_COLS, RELICS } from './data.js';
 
-const KEY = 'zauberlehrling-v1';
+const KEY = 'zauberlehrling-v1';   // alter Projektname, bleibt, damit Spielstände erhalten bleiben
 
 export function newMeta() {
   return {

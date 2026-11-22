@@ -15,7 +15,7 @@ function topbar() {
   const s = game.meta.settings;
   const el = document.getElementById('topbar');
   el.innerHTML = `
-    <button class="brand" data-go="title">🐍 Zauberlehrling</button>
+    <button class="brand" data-go="title">🐍 Pythonia</button>
     ${run ? `<span class="pill">❤ ${run.hp}/${run.maxHp}</span><span class="pill">💰 ${run.gold}</span>
       <span class="pill" title="Erfahrung">Lv ${run.level} · ${run.exp}/${EXP_PER_LEVEL} EXP</span>
       <button class="pill btnlike" data-go="deck">🂠 Deck ${run.deck.length}</button>
@@ -53,12 +53,13 @@ function showTitle() {
   const run = game.run;
   const m = game.meta;
   app().innerHTML = `<div class="title-screen">
-    <h1>🐍 Zauberlehrling</h1>
+    <h1>🐍 Pythonia</h1>
+    <p class="subtitle">Die Höhle der Verzweigungen</p>
     <p class="sub">Ein Deckbuilder, in dem deine Zauber Python sind.<br>Lies Code im Kampf, schreibe Code in der Schmiede, repariere Bugs.</p>
     <div class="menu">
       ${run ? '<button class="btn big" data-a="continue">Run fortsetzen</button>' : ''}
       <button class="btn big ${run ? 'secondary' : ''}" data-a="new">Neuer Run</button>
-      <button class="btn secondary" data-a="talents">Talentbaum ${m.talentPoints ? `(${m.talentPoints} Punkte frei)` : ''}</button>
+      <button class="btn secondary" data-a="talents">Talentbaum ${m.talentPoints ? `(${m.talentPoints} ${m.talentPoints === 1 ? "Punkt" : "Punkte"} frei)` : ''}</button>
       <button class="btn secondary" data-a="book">📖 Zauberbuch</button>
       <button class="btn secondary" data-a="howto">So funktioniert's</button>
       <button class="btn secondary" data-a="saves">Spielstand</button>

@@ -1,6 +1,6 @@
 # Prompts für Meshy
 
-Neun Figuren für den Zauberlehrling. Die Prompts sind auf Englisch, weil Meshy damit meist bessere Ergebnisse liefert. Alle Prompts nutzen denselben Stil, damit die Figuren zusammenpassen.
+Neun Figuren für Pythonia. Die Prompts sind auf Englisch, weil Meshy damit meist bessere Ergebnisse liefert. Alle Prompts nutzen denselben Stil, damit die Figuren zusammenpassen.
 
 ## So gehst du vor
 
