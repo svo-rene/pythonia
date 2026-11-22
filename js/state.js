@@ -1,5 +1,5 @@
 // Spielstand: dauerhafte Daten (meta) und der laufende Run (run). Gespeichert im Browser.
-import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_PLAN, MAP_COLS } from './data.js';
+import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_PLAN, MAP_COLS, RELICS } from './data.js';
 
 const KEY = 'zauberlehrling-v1';
 
@@ -13,6 +13,10 @@ export function newMeta() {
     runs: 0,
     wins: 0,
     settings: { lesehilfe: true, tempo: 'normal' },
+    riddles: [],        // gelöste Rätsel
+    book: { cards: [], relics: [], evos: [] },   // Zauberbuch: schon gesehene Dinge
+    achievements: [],
+    stufeMax: 0,        // höchste freigeschaltete Prüfungsstufe
   };
 }
 
@@ -28,7 +32,9 @@ export function load() {
     if (!raw) return;
     const data = JSON.parse(raw);
     game.meta = { ...newMeta(), ...data.meta, settings: { ...newMeta().settings, ...(data.meta?.settings ?? {}) } };
+    game.meta.book = { ...newMeta().book, ...(data.meta?.book ?? {}) };
     game.run = data.run?.map ? data.run : null;   // Runs aus der alten Kartenversion verwerfen
+    if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; }
   } catch { /* kaputter Spielstand: neu anfangen */ }
 }
 
@@ -51,6 +57,13 @@ export function resetAll() {
 }
 
 // ---------- Zufall mit Startwert (Runs sind reproduzierbar) ----------
+/** Klassen-Code → Startwert. Gleicher Code = gleiche Höhle und gleiche Angebote. */
+export function hashSeed(text) {
+  let h = 2166136261;
+  for (const ch of text.trim().toUpperCase()) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return h | 0;
+}
+
 export function rng() {
   const r = game.run;
   r.seed = (r.seed + 0x6d2b79f5) | 0;
@@ -78,11 +91,25 @@ export function makeCard(id, extra = {}) {
   return { uid: `${Date.now().toString(36)}-${uidCounter++}`, id, up: false, ...extra };
 }
 
-export function newRun(heroId = 'magierin') {
+export function newStats() {
+  return { damage: 0, cardsPlayed: 0, bestHit: null, predRight: 0, predWrong: 0, riddlesRight: 0, riddlesWrong: 0, relicFires: {}, turnsTaken: 0 };
+}
+
+/** Merkt sich im Zauberbuch, dass man etwas gesehen hat. */
+export function noteBook(kind, id) {
+  const b = game.meta.book;
+  if (!b[kind].includes(id)) b[kind].push(id);
+}
+
+export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
   const hero = HEROES[heroId];
   const maxHp = hero.hp + (hasTalent('vit') ? 6 : 0);
   game.run = {
-    seed: Math.floor(Math.random() * 2 ** 31),
+    seed: seedCode ? hashSeed(seedCode) : Math.floor(Math.random() * 2 ** 31),
+    seedCode,
+    stufe,
+    relics: Object.keys(RELICS).filter((k) => RELICS[k].start === heroId),
+    stats: newStats(),
     hero: heroId,
     map: null,
     pos: null,        // aktueller Knoten (null = Höhleneingang)
@@ -107,7 +134,10 @@ export function newRun(heroId = 'magierin') {
     const i = deck.findIndex((c) => c.id === 'funke');
     if (i >= 0) deck[i] = makeCard('salve');
   }
+  if (stufe >= 3) deck.push(makeCard('zaunpfahl'));
   game.run.deck = deck;
+  for (const c of deck) noteBook('cards', c.id);
+  for (const r of game.run.relics) noteBook('relics', r);
   game.run.map = generateMap();
   game.meta.runs++;
   save();

@@ -1,11 +1,13 @@
 // Einstieg: Titel, Karte des Akts, Talentbaum, Run-Ende, Einstellungen.
-import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL } from './data.js';
+import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN } from './data.js';
+import { eventRoom } from './events.js';
+import { showRelics, relicCode, relicView } from './relics.js';
 import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable } from './state.js';
 import { heroSprite } from './sprites.js';
 import { loadNatter } from './natter.js';
 import { startCombat, rerenderCombat } from './combat.js';
 import { forgeRoom, debugRoom, shopRoom, restRoom, rewardScreen } from './rooms.js';
-import { app, esc, modal, toast, cardView } from './ui.js';
+import { app, esc, modal, toast, cardView, codeView } from './ui.js';
 
 // ---------- Kopfleiste ----------
 function topbar() {
@@ -16,12 +18,16 @@ function topbar() {
     <button class="brand" data-go="title">🐍 Zauberlehrling</button>
     ${run ? `<span class="pill">❤ ${run.hp}/${run.maxHp}</span><span class="pill">💰 ${run.gold}</span>
       <span class="pill" title="Erfahrung">Lv ${run.level} · ${run.exp}/${EXP_PER_LEVEL} EXP</span>
-      <button class="pill btnlike" data-go="deck">🂠 Deck ${run.deck.length}</button>` : ''}
+      <button class="pill btnlike" data-go="deck">🂠 Deck ${run.deck.length}</button>
+      ${run.seedCode ? `<span class="pill" title="Klassen-Code: alle mit diesem Code spielen dieselbe Höhle">🏫 ${esc(run.seedCode)}</span>` : ''}
+      ${run.stufe ? `<span class="pill" title="Prüfungsstufe">⚔ Stufe ${run.stufe}</span>` : ''}
+      <button class="pill btnlike" data-go="relics" title="Relikte und ihre Reihenfolge">🧿 ${run.relics.map((id) => RELICS[id].icon).join('') || 'Relikte'}</button>` : ''}
     <span class="spacer"></span>
     <label class="toggle"><input type="checkbox" data-set="lesehilfe" ${s.lesehilfe ? 'checked' : ''}> Lesehilfe</label>
     <label class="toggle"><input type="checkbox" data-set="tempo" ${s.tempo === 'schnell' ? 'checked' : ''}> Schnell</label>`;
   el.querySelector('[data-go="title"]').onclick = () => { if (!document.querySelector('.combat') || confirm('Zum Titel? Der Kampf startet beim Fortsetzen neu.')) showTitle(); };
   el.querySelector('[data-go="deck"]')?.addEventListener('click', showDeck);
+  el.querySelector('[data-go="relics"]')?.addEventListener('click', () => showRelics(() => { topbar(); rerenderCombat(); }));
   el.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => {
     if (i.dataset.set === 'lesehilfe') s.lesehilfe = i.checked;
     if (i.dataset.set === 'tempo') s.tempo = i.checked ? 'schnell' : 'normal';
@@ -53,6 +59,7 @@ function showTitle() {
       ${run ? '<button class="btn big" data-a="continue">Run fortsetzen</button>' : ''}
       <button class="btn big ${run ? 'secondary' : ''}" data-a="new">Neuer Run</button>
       <button class="btn secondary" data-a="talents">Talentbaum ${m.talentPoints ? `(${m.talentPoints} Punkte frei)` : ''}</button>
+      <button class="btn secondary" data-a="book">📖 Zauberbuch</button>
       <button class="btn secondary" data-a="howto">So funktioniert's</button>
       <button class="btn secondary" data-a="saves">Spielstand</button>
     </div>
@@ -64,18 +71,24 @@ function showTitle() {
   });
   app().querySelector('[data-a="talents"]').addEventListener('click', showTalents);
   app().querySelector('[data-a="howto"]').addEventListener('click', showHowto);
+  app().querySelector('[data-a="book"]').addEventListener('click', showBook);
   app().querySelector('[data-a="saves"]').addEventListener('click', showSaves);
 }
 
 function showHowto() {
   const { el, close } = modal(`<h3>So funktioniert's</h3>
     <ul class="howto">
-      <li><b>Karten sind Python.</b> Beim Ausspielen läuft der Code Zeile für Zeile, rechts siehst du die Variablen.</li>
+      <li><b>Karten sind Python.</b> Beim Ausspielen läuft der Code Zeile für Zeile. Links stehen deine Werte, rechts die der Gegner.</li>
       <li><b>Gegner zeigen ihre Absicht als Code.</b> Lies ihn, bevor du entscheidest. Er läuft mit den Werten nach deinem Zug.</li>
-      <li><b>Vorhersagen:</b> Sag vorher, was eine Karte bewirkt. Stimmt es, wirkt sie 1,5-mal so stark.</li>
+      <li><b>Eingebung 🔮:</b> Manchmal leuchtet eine Karte auf der Hand. Sag vorher, was sie bewirkt: Stimmt es, wirkt sie doppelt. Die Chance steigt mit deinem Level.</li>
+      <li><b>Relikte 🧿</b> sind Funktionen wie <code>def zug_start():</code>. Das Spiel ruft sie selbst auf. Die Reihenfolge legst du fest, und sie zählt!</li>
+      <li><b>?-Räume:</b> Code im Kopf verfolgen oder eine Entscheidung treffen. Richtig gerechnet gibt es eine Belohnung.</li>
       <li><b>Schmiede:</b> Schreibe oder ordne Code. Bestehen alle Tests, wird dein Code zu einer neuen Karte.</li>
+      <li><b>Rastplatz:</b> Heilen, eine Karte verbessern oder zwei Karten zu einer <b>Evolution</b> verschmelzen (eine muss verbessert sein).</li>
       <li><b>Debug-Raum:</b> Bug-Karten haben typische Fehler. Repariert werden sie stärker.</li>
-      <li><b>Händler:</b> Lerne neue Python-Konzepte (elif, for, while). Sie bringen neue Karten.</li>
+      <li><b>Händler:</b> Neue Python-Konzepte (elif, for, while), Karten, Relikte und Karten entfernen.</li>
+      <li><b>Zauberbuch 📖:</b> Alles, was du entdeckt hast, und Erfolge, die neue Relikte freischalten.</li>
+      <li><b>Klassen-Code 🏫:</b> Gleicher Code = gleiche Höhle für alle. Nach einem Sieg wird die nächste Prüfungsstufe frei.</li>
       <li><b>Kämpfe</b> geben Gold, <b>Schmieden</b> geben EXP. Ab 50 EXP steigst du ein Level auf.</li>
       <li><b>Talentbaum:</b> Auch verlorene Runs geben Punkte.</li>
     </ul><div class="row"><button class="btn ok">Los geht's</button></div>`, { onClose: () => {} });
@@ -110,16 +123,28 @@ function showHeroSelect() {
       <b>${esc(h.name)}</b>
       <span class="hint small">${esc(h.text)}</span>
       <span class="hero-stat">❤ ${h.hp} Leben</span>
-      <span class="hero-gabe"><b>${esc(h.gabe)}:</b> ${esc(h.gabeText)}</span>
+      <span class="hero-gabe"><b>${RELICS[h.relic].icon} Start-Relikt ${esc(RELICS[h.relic].name)}:</b><code class="relic-mini">${esc(relicCode(h.relic))}</code>${h.extra ? `<br>${esc(h.extra)}` : ''}</span>
       <span class="hero-deck">${deck}</span></button>`;
   }).join('');
   app().innerHTML = `<div class="hero-select">
     <h2>Wähle deine Figur</h2>
-    <p class="hint">Jede Figur startet mit anderen Karten. Was du in der Schmiede baust, gehört trotzdem allen.</p>
+    <p class="hint">Jede Figur startet mit anderen Karten und einem eigenen Relikt.</p>
+    <div class="run-options">
+      <label>🏫 Klassen-Code <input class="seed-input" maxlength="20" placeholder="leer = zufällig"></label>
+      <button class="btn secondary small day-code">Tages-Code</button>
+      ${game.meta.stufeMax > 0 ? `<label>⚔ Prüfungsstufe <select class="stufe-select">${STUFEN.slice(0, game.meta.stufeMax + 1).map((t, i) => `<option value="${i}">${i}: ${esc(t)}</option>`).join('')}</select></label>` : ''}
+      <p class="hint small">Gleicher Klassen-Code = gleiche Höhle und gleiche Angebote für alle. So könnt ihr vergleichen, wer am weitesten kommt.</p>
+    </div>
     <div class="hero-list">${heroes}</div>
     <div class="row center"><button class="btn secondary back">Zurück</button></div></div>`;
+  app().querySelector('.day-code').addEventListener('click', () => {
+    const d = new Date();
+    app().querySelector('.seed-input').value = `TAG-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   app().querySelectorAll('[data-hero]').forEach((b) => b.addEventListener('click', () => {
-    newRun(b.dataset.hero);
+    const seedCode = app().querySelector('.seed-input').value.trim().toUpperCase();
+    const stufe = Number(app().querySelector('.stufe-select')?.value ?? 0);
+    newRun(b.dataset.hero, { seedCode, stufe });
     showMap();
   }));
   app().querySelector('.back').addEventListener('click', showTitle);
@@ -210,6 +235,7 @@ function enterRoom(node) {
   else if (t === 'debug') debugRoom(roomDone);
   else if (t === 'haendler') shopRoom(roomDone);
   else if (t === 'rast') restRoom(roomDone);
+  else if (t === 'raetsel') eventRoom(roomDone);
   topbar();
 }
 
@@ -220,6 +246,8 @@ function runOver(won) {
   const points = won ? 3 : 1 + run.elitesWon;
   meta.talentPoints += points;
   if (won) meta.wins++;
+  const newStufe = won && (run.stufe ?? 0) + 1 > meta.stufeMax && (run.stufe ?? 0) + 1 < STUFEN.length;
+  if (newStufe) meta.stufeMax = (run.stufe ?? 0) + 1;
   game.run = null;
   save();
   topbar();
@@ -227,10 +255,67 @@ function runOver(won) {
     <h1>${won ? '♛ Sieg über den Verzweiger!' : 'Der Run ist vorbei'}</h1>
     <p class="sub">${won ? 'Akt 1 ist geschafft. In Akt 2 warten Schleifen und Listen.' : 'Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.'}</p>
     <p>+${points} Talentpunkt${points === 1 ? '' : 'e'}${!won && run.elitesWon ? ` (1 + ${run.elitesWon} für Elite-Siege)` : ''}</p>
-    <p class="hint">${run.path.length} Räume geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst</p>
+    <p class="hint">${run.path.length} ${run.path.length === 1 ? 'Raum' : 'Räume'} geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst${run.seedCode ? ` · Klassen-Code <b>${esc(run.seedCode)}</b>` : ''}${run.stufe ? ` · Stufe ${run.stufe}` : ''}</p>
+    ${newStufe ? `<p class="good-note">⚔ Prüfungsstufe ${meta.stufeMax} freigeschaltet: ${esc(STUFEN[meta.stufeMax])}</p>` : ''}
+    ${runReview(run, won)}
     <div class="menu"><button class="btn big" data-a="talents">Zum Talentbaum</button><button class="btn secondary" data-a="new">Neuer Run</button></div></div>`;
   app().querySelector('[data-a="talents"]').addEventListener('click', showTalents);
   app().querySelector('[data-a="new"]').addEventListener('click', showHeroSelect);
+}
+
+/** Rückblick wie bei Hades: Was war dein bester Zauber, was sagt der Meister dazu? */
+function runReview(run, won) {
+  const s = run.stats ?? {};
+  const fav = Object.entries(s.relicFires ?? {}).sort((a, b) => b[1] - a[1])[0];
+  const preds = (s.predRight ?? 0) + (s.predWrong ?? 0);
+  let says;
+  if (s.bestHit && s.bestHit.dmg >= 20) says = `„${s.bestHit.dmg} Schaden mit einer einzigen Karte! Genau so rechnet ein Meister.“`;
+  else if (preds && s.predRight / preds >= 0.6) says = '„Du liest Code, bevor er läuft. Das ist die halbe Zauberkunst.“';
+  else if ((s.riddlesRight ?? 0) >= 2) says = '„Die Rätselgeister reden schon über dich.“';
+  else if (!won) says = '„Jeder Fehler ist ein Test, der dir etwas verrät. Versuch es noch einmal.“';
+  else says = '„Sauber gezaubert. Der Verzweiger hat keine Verzweigung mehr übrig.“';
+  return `<div class="review">
+    <h3>📜 Rückblick</h3>
+    <div class="review-grid">
+      <div><b>${s.damage ?? 0}</b><small>Schaden insgesamt</small></div>
+      <div><b>${s.cardsPlayed ?? 0}</b><small>Karten gespielt</small></div>
+      <div><b>${s.predRight ?? 0}/${preds}</b><small>Eingebungen richtig</small></div>
+      <div><b>${s.riddlesRight ?? 0}</b><small>Rätsel gelöst</small></div>
+    </div>
+    ${s.bestHit ? `<p>Dein stärkster Zauber: <b>${esc(s.bestHit.name)}</b> mit ${s.bestHit.dmg} Schaden</p>${codeView(s.bestHit.code, { small: true })}` : ''}
+    ${fav ? `<p>Fleißigstes Relikt: ${RELICS[fav[0]].icon} <b>${esc(RELICS[fav[0]].name)}</b> (${fav[1]}-mal ausgelöst)</p>` : ''}
+    <p class="mentor">🧙 Der Meister sagt: ${esc(says)}</p></div>`;
+}
+
+// ---------- Zauberbuch ----------
+function showBook() {
+  topbar();
+  const b = game.meta.book;
+  const cards = Object.entries(CARDS).map(([id, c]) => b.cards.includes(id)
+    ? cardView(c, { lesehilfe: false }) : '<div class="card unknown"><b>???</b></div>').join('');
+  const relics = Object.keys(RELICS).map((id) => b.relics.includes(id) ? relicView(id)
+    : `<div class="relic unknown"><b>???</b><p class="hint small">${RELICS[id].unlock ? `Erfolg: ${esc(ACHIEVEMENTS[RELICS[id].unlock].text)}` : 'Noch nicht gefunden.'}</p></div>`).join('');
+  const evos = Object.entries(EVOLUTIONS).map(([id, e]) => {
+    const known = b.evos.includes(id);
+    const f = FORGES[e.forge];
+    return `<div class="evo-entry ${known ? '' : 'unknown'}">
+      <span>${e.zutaten.map((z) => b.cards.includes(z) ? esc(CARDS[z].name) : '???').join(' + ')} = <b>${known ? esc(f.karte.name) : '???'}</b></span>
+      ${known ? codeView(f.zeilen.join('\n'), { small: true }) : '<p class="hint small">Liegen beide Karten im Deck und ist eine davon verbessert (+), kannst du sie am Rastplatz verschmelzen.</p>'}</div>`;
+  }).join('');
+  const ach = Object.entries(ACHIEVEMENTS).map(([id, a]) => {
+    const done = game.meta.achievements.includes(id);
+    return `<li class="${done ? 'done' : ''}">${done ? '🏆' : '🔒'} <b>${esc(a.name)}</b>: ${esc(a.text)} → ${RELICS[a.relic].icon} ${esc(RELICS[a.relic].name)}</li>`;
+  }).join('');
+  const nCards = b.cards.filter((id) => CARDS[id]).length;
+  app().innerHTML = `<div class="book">
+    <h2>📖 Zauberbuch</h2>
+    <p class="hint">Alles, was du schon entdeckt hast. Rätsel gelöst: ${game.meta.riddles.length} von ${Object.keys(RIDDLES).length}.</p>
+    <h3>Karten <small class="tag">${nCards}/${Object.keys(CARDS).length}</small></h3><div class="card-grid">${cards}</div>
+    <h3>Evolutionen <small class="tag">${b.evos.length}/${Object.keys(EVOLUTIONS).length}</small></h3><div class="evo-list">${evos}</div>
+    <h3>Relikte <small class="tag">${b.relics.length}/${Object.keys(RELICS).length}</small></h3><div class="relic-grid">${relics}</div>
+    <h3>Erfolge <small class="tag">${game.meta.achievements.length}/${Object.keys(ACHIEVEMENTS).length}</small></h3><ul class="achievements">${ach}</ul>
+    <div class="row"><button class="btn back">Zurück</button></div></div>`;
+  app().querySelector('.back').addEventListener('click', showTitle);
 }
 
 // ---------- Talentbaum ----------

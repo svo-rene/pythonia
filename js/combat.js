@@ -1,8 +1,9 @@
 // Kartenkampf: Karten sind Python, Gegnerabsichten sind Python, beides läuft sichtbar Zeile für Zeile.
-import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES } from './data.js';
+import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES } from './data.js';
+import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
-import { game, save, shuffle, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
+import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
 import { runPy } from './natter.js';
 import { app, esc, codeView, varsView, sleep, toast, modal, cardView } from './ui.js';
 
@@ -18,8 +19,12 @@ export function startCombat(encId, kind, done) {
     kind,
     enemies: ENCOUNTERS[encId].map((id) => {
       const e = ENEMIES[id];
-      return { id, name: e.name, hp: e.hp, maxHp: e.hp, code: e.code, mem: { ...(e.mem ?? {}) }, intent: null, boss: e.boss, elite: e.elite };
+      const stufe = run.stufe ?? 0;
+      const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
+      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: { ...(e.mem ?? {}) }, intent: null, boss: e.boss, elite: e.elite };
     }),
+    rule: null,       // Sonderregel (Boss immer, Elite ab Stufe 2)
+    hpStart: run.hp,
     draw: shuffle(run.deck.map((c) => c.uid)),
     hand: [],
     discard: [],
@@ -28,7 +33,7 @@ export function startCombat(encId, kind, done) {
     staerke: 0,
     turn: 0,
     target: 0,
-    predictionsLeft: 0,
+    inspired: null,   // Karte mit Eingebung: nur sie darf vorhergesagt werden
     selected: null,
     busy: false,
     view: null,       // Anzeige während der Animation
@@ -36,15 +41,60 @@ export function startCombat(encId, kind, done) {
     maxEnergie: 3,
     shown: { player: null, enemies: [] },   // zuletzt gezeigte Lebenswerte (für Treffer-Effekte)
   };
-  if (run.hero === 'magierin') C.staerke += 1;
-  if (run.hero === 'waechter') C.block += 5;
+  if (kind === 'boss' || (kind === 'elite' && (run.stufe ?? 0) >= 2)) {
+    const keys = Object.keys(RULES);
+    C.rule = keys[Math.floor(rng() * keys.length)];
+  }
+  C.relicMem = {};     // merk-Variable je Relikt, bleibt im Kampf erhalten
+  C.relicLog = [];
+  C.fired = {};
   if (hasTalent('glut2')) C.staerke += 1;
   if (hasSkill('kraftreserve')) C.staerke += 1;
   if (hasTalent('frost1')) C.block += 4;
+  runRelics('kampf_start');
   startTurn();
 }
 
+/** Ruft alle Relikte eines Zeitpunkts auf, in der Reihenfolge des Spielers. Jedes sieht die Werte nach dem vorigen. */
+function runRelics(hook, extra = {}) {
+  const run = game.run;
+  const notes = [];
+  for (const id of run.relics) {
+    const r = RELICS[id];
+    if (!r || r.hook !== hook) continue;
+    const start = { ...baseVars(), runde: C.turn, gold: run.gold, merk: C.relicMem[id] ?? 0, ...extra };
+    const res = runPy(r.code, start, { trace: false });
+    if (!res.ok) continue;
+    const v = res.vars;
+    const before = { leben: run.hp, block: C.block, energie: C.energie, staerke: C.staerke, gold: run.gold };
+    const dmg = enemyDeltas(start, v).reduce((t, x) => t + Math.max(0, x.d), 0);
+    applyCardResult(start, v, 1);
+    run.gold = Math.max(0, num(v.gold, start.gold));
+    C.relicMem[id] = num(v.merk, start.merk);
+    const after = { leben: run.hp, block: C.block, energie: C.energie, staerke: C.staerke, gold: run.gold };
+    const ch = Object.keys(before).filter((k) => before[k] !== after[k]).map((k) => `${k} ${before[k]} → ${after[k]}`);
+    if (dmg > 0) ch.push(`${dmg} Schaden`);
+    if (ch.length) {
+      notes.push(`${r.icon} <b>${esc(r.name)}</b>: ${ch.join(', ')}`);
+      C.fired[id] = Date.now();
+      run.stats.relicFires[id] = (run.stats.relicFires[id] ?? 0) + 1;
+    }
+  }
+  if (notes.length) C.relicLog = notes;
+  return notes.length;
+}
+
 const cardByUid = (uid) => game.run.deck.find((c) => c.uid === uid);
+
+/** Kosten einer Karte, mit Sonderregel. 'X'-Karten kosten vorab nichts. */
+function cardCost(def) {
+  if (def.cost === 'X') return 0;
+  let c = def.cost;
+  const lines = def.code.split('\n').filter((l) => l.trim()).length;
+  if (C?.rule === 'if_teuer' && /\bif\b/.test(def.code)) c += 1;
+  if (C?.rule === 'lang_teuer' && lines > 2) c += 1;
+  return c;
+}
 const alive = () => C.enemies.filter((e) => e.hp > 0);
 const speed = () => (game.meta.settings.tempo === 'schnell' ? 0.35 : 1);
 
@@ -65,11 +115,27 @@ function startTurn() {
   C.maxEnergie = Math.max(3, C.energie);
   if (C.turn > 1) C.block = hasTalent('frost2') ? Math.floor(C.block / 2) : 0;
   if (hasSkill('panzerhaut')) C.block += 3;
-  C.predictionsLeft = 1 + (hasTalent('gel2') ? 1 : 0) + (game.run.hero === 'orakel' ? 1 : 0);
   drawCards(5 + (C.turn === 1 && hasTalent('takt2') ? 1 : 0));
   fixTarget();
   updateIntents();
+  if (C.turn > 1) C.relicLog = [];
+  if (runRelics('zug_start')) updateIntents();
+  C.inspired = null;
+  if (C.hand.length && rng() < eingebungChance()) {
+    C.inspired = C.hand[Math.floor(rng() * C.hand.length)];
+    C.message = `${C.message ? `${C.message}<br>` : ""}🔮 <b>Eingebung!</b> ${esc(cardDef(cardByUid(C.inspired)).name)} leuchtet. Sag vorher, was sie bewirkt: Stimmt es, wirkt sie doppelt.`;
+  }
   render();
+}
+
+/** Chance auf eine Eingebung pro Zug: steigt mit Level, Orakel, Talent und Run-Skill. */
+export function eingebungChance() {
+  const run = game.run;
+  let c = 0.25 + 0.05 * (run.level - 1);
+  if (run.hero === 'orakel') c += 0.25;
+  if (hasTalent('gel2')) c += 0.15;
+  if (hasSkill('klarsicht')) c += 0.15;
+  return Math.min(0.9, c);
 }
 
 function fixTarget() {
@@ -151,15 +217,18 @@ async function playCard(uid, prediction = null) {
   if (C.busy) return;
   const card = cardByUid(uid);
   const def = cardDef(card);
-  const cost = def.cost === 'X' ? 0 : def.cost;
+  const cost = cardCost(def);
   if (cost > C.energie) { toast('Nicht genug Energie.', 'bad'); return; }
   fixTarget();
   C.busy = true;
   C.selected = null;
+  if (C.inspired === uid) C.inspired = null;
   C.energie -= cost;
   C.hand = C.hand.filter((u) => u !== uid);
   const start = baseVars();
   start.hand = C.hand.map((u) => cardDef(cardByUid(u)).name);
+  const realStaerke = C.staerke;
+  if (C.rule === 'staerke_null') start.staerke = 0;
   let drawn = 0;
   const res = runPy(def.code, start, { natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
 
@@ -170,8 +239,8 @@ async function playCard(uid, prediction = null) {
     const m = metricFor(def);
     const actual = metricValue(m.key, start, res.vars);
     if (Number(prediction.value) === actual) {
-      mult = 1.5;
-      predictionNote = `<b>Volltreffer!</b> Vorhersage ${actual} stimmt, Wirkung ×1,5.`;
+      mult = 2;
+      predictionNote = `<b>Volltreffer!</b> Vorhersage ${actual} stimmt, Wirkung ×2.`;
     } else {
       predictionNote = `Vorhersage ${esc(prediction.value)}, richtig war ${actual}. Schau dir die Schritte an.`;
     }
@@ -197,7 +266,11 @@ async function playCard(uid, prediction = null) {
     return;
   }
   await cardFx(cardEffect(start, res), speed());
+  trackStats(def, start, res.vars, mult, prediction);
   applyCardResult(start, res.vars, mult);
+  if (C.rule === 'staerke_null') C.staerke = realStaerke + num(res.vars.staerke, 0);
+  fixTarget();
+  runRelics('karte_gespielt', { typ: def.type ?? 'skill', kosten: cost });
   drawCards(drawn);
   C.view = null;
   C.message = predictionNote;
@@ -231,6 +304,16 @@ function cardEffect(start, res) {
     selfDamage: Math.max(0, -dLeben),
     buff: num(v.staerke, start.staerke) > start.staerke || num(v.energie, start.energie) > start.energie,
   };
+}
+
+function trackStats(def, start, v, mult, prediction) {
+  const st = game.run.stats;
+  st.cardsPlayed++;
+  const dmg = enemyDeltas(start, v).reduce((t, x) => t + Math.max(0, Math.ceil(x.d * mult)), 0);
+  st.damage += dmg;
+  if (dmg > 0 && (!st.bestHit || dmg > st.bestHit.dmg)) st.bestHit = { name: def.name, code: def.code, dmg };
+  if (prediction) (mult > 1 ? st.predRight++ : st.predWrong++);
+  if (st.predRight >= 3) unlockAchievement('hellseher');
 }
 
 function applyCardResult(start, v, mult) {
@@ -270,7 +353,14 @@ async function endTurn() {
   if (C.busy && C.view) return;
   C.busy = true;
   C.selected = null;
+  C.inspired = null;
   C.message = '';
+  C.relicLog = [];
+  game.run.stats.turnsTaken++;
+  if (runRelics('zug_ende')) {
+    updateIntents();
+    if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+  }
   C.discard.push(...C.hand);
   C.hand = [];
   for (const e of C.enemies) {
@@ -338,6 +428,9 @@ function checkEnd() {
   }
   if (alive().length === 0) {
     C.busy = true;
+    runRelics('kampf_ende');
+    if (game.run.hp >= C.hpStart) unlockAchievement('unverwundbar');
+    if (game.run.deck.length <= 8) unlockAchievement('minimalist');
     render();
     setTimeout(() => onEnd({ won: true }), 700);
     return true;
@@ -395,16 +488,18 @@ function render() {
 
   const hand = C.hand.map((uid) => {
     const def = cardDef(cardByUid(uid));
-    const cost = def.cost === 'X' ? 'X' : def.cost;
-    const cant = def.cost !== 'X' && def.cost > C.energie;
-    return cardView(def, { lesehilfe: lese, cls: `${cant ? 'cant' : ''} ${C.selected === uid ? 'selected' : ''}`, extra: `data-card="${uid}"`, cost });
+    const cost = def.cost === 'X' ? 'X' : cardCost(def);
+    const cant = def.cost !== 'X' && cost > C.energie;
+    return cardView(def, { lesehilfe: lese, cls: `${cant ? 'cant' : ''} ${C.selected === uid ? 'selected' : ''} ${C.inspired === uid ? 'inspired' : ''}`, extra: `data-card="${uid}"`, cost });
   }).join('');
 
   const heroName = HEROES[run.hero]?.name ?? 'Held';
   const casting = v?.kind === 'card';
   app().innerHTML = `
   <div class="combat">
+    ${C.rule ? `<div class="rule-banner" title="${esc(RULES[C.rule].code)}">⚠ <b>${esc(RULES[C.rule].name)}</b> · ${esc(RULES[C.rule].text)}</div>` : ''}
     <div class="stage ${C.kind} foes-${C.enemies.length}">
+      <div class="relic-strip">${run.relics.map((id) => `<button class="ricon ${Date.now() - (C.fired[id] ?? 0) < 1500 ? 'fired' : ''}" title="${esc(RELICS[id].name)}: ${esc(relicCode(id))}">${RELICS[id].icon}</button>`).join('')}</div>
       <div class="side-panel left">${left}</div>
       <div class="fighter hero ${casting ? 'casting' : ''} ${pHit.cls}">
         <div class="over">
@@ -412,7 +507,7 @@ function render() {
             <div class="energy-orb" title="Energie"><b>${energieNow}</b><small>/${C.maxEnergie}</small></div>
             <div class="badges">
               <span class="badge" title="Stärke">💪 ${staerkeNow}</span>
-              <span class="badge" title="Vorhersagen übrig">🔮 ${C.predictionsLeft}</span>
+              <span class="badge" title="Chance auf eine Eingebung pro Zug">🔮 ${Math.round(eingebungChance() * 100)} %</span>
             </div>
           </div>
           <div class="hpline">
@@ -426,7 +521,8 @@ function render() {
       <div class="foes">${enemies}</div>
       <div class="side-panel right">${right}</div>
     </div>
-    <div class="msg">${!C.busy && C.selected ? selectedBar() : (C.message || (C.busy ? '' : 'Tippe auf einen Gegner, um ihn als Ziel zu wählen, und auf eine Karte, um sie auszuwählen.'))}</div>
+    <div class="msg">${!C.busy && C.selected ? selectedBar() : (C.message || (C.busy ? '' : 'Tippe auf einen Gegner, um ihn als Ziel zu wählen, und auf eine Karte, um sie auszuwählen.'))}
+      ${C.relicLog.length ? `<div class="relic-log">${C.relicLog.join(' · ')}</div>` : ''}</div>
     <div class="hand-row">
       <div class="pile" title="Ziehstapel"><b>${C.draw.length}</b><small>Ziehstapel</small></div>
       <div class="hand">${hand || '<div class="empty-hand">Keine Karten auf der Hand.</div>'}</div>
@@ -447,6 +543,7 @@ function render() {
     render();
   }));
   app().querySelector('.end-turn')?.addEventListener('click', () => endTurn());
+  app().querySelectorAll('.ricon').forEach((b) => b.addEventListener('click', () => showRelics(render)));
   app().querySelector('.play')?.addEventListener('click', () => playCard(C.selected));
   app().querySelector('.predict')?.addEventListener('click', () => askPrediction(C.selected));
 }
@@ -495,13 +592,13 @@ function sidePanels(v) {
 /** Leiste unter der Bühne, wenn eine Karte ausgewählt ist. */
 function selectedBar() {
   const def = cardDef(cardByUid(C.selected));
-  const cost = def.cost === 'X' ? 0 : def.cost;
+  const cost = cardCost(def);
   const can = cost <= C.energie;
   const m = metricFor(def);
   return `<div class="sel-bar"><b>${esc(def.name)}</b>
     <button class="btn play" ${can ? '' : 'disabled'}>Ausspielen</button>
-    <button class="btn predict secondary" ${can && C.predictionsLeft > 0 ? '' : 'disabled'}>🔮 Vorhersagen</button>
-    <span class="hint small">${can ? `Vorhersage: ${esc(m.frage)} Richtig = ×1,5.` : 'Zu wenig Energie.'}</span></div>`;
+    ${C.inspired === C.selected ? `<button class="btn predict" ${can ? '' : 'disabled'}>🔮 Vorhersagen</button>` : ''}
+    <span class="hint small">${!can ? 'Zu wenig Energie.' : C.inspired === C.selected ? `Eingebung: ${esc(m.frage)} Richtig = ×2.` : ''}</span></div>`;
 }
 
 function askPrediction(uid) {
@@ -512,7 +609,7 @@ function askPrediction(uid) {
     <h3>🔮 Vorhersage: ${esc(def.name)}</h3>
     ${codeView(def.code)}
     <p>${esc(m.frage)}</p>
-    <p class="hint small">Ziel: ${esc(t?.name ?? '–')} · Stärke ${C.staerke} · Block ${C.block} · Energie nach dem Bezahlen ${C.energie - (def.cost === 'X' ? 0 : def.cost)}</p>
+    <p class="hint small">Ziel: ${esc(t?.name ?? '–')} · Stärke ${C.staerke} · Block ${C.block} · Energie nach dem Bezahlen ${C.energie - cardCost(def)}</p>
     <input type="number" class="pred-input" autofocus>
     <div class="row"><button class="btn ok">Festlegen und ausspielen</button><button class="btn secondary cancel">Abbrechen</button></div>
   `, { onClose: () => {} });
@@ -520,7 +617,7 @@ function askPrediction(uid) {
   input.focus();
   const go = () => {
     if (input.value === '') return;
-    C.predictionsLeft--;
+    C.inspired = null;
     close();
     playCard(uid, { value: input.value });
   };

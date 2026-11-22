@@ -70,15 +70,15 @@ export const CARDS = {
 export const HEROES = {
   magierin: { name: 'Die Funkenmagierin', hp: 46,
     deck: ['funke', 'funke', 'funke', 'funke', 'funke', 'schutz', 'schutz', 'schutz', 'doppelschlag', 'konter'],
-    gabe: 'Glut', gabeText: 'Beginnt jeden Kampf mit 1 Stärke.',
+    relic: 'glutstein',
     text: 'Greift hart an und hält wenig aus.' },
   waechter: { name: 'Der Steinwächter', hp: 60,
     deck: ['funke', 'funke', 'funke', 'funke', 'schutz', 'schutz', 'schutz', 'schutz', 'schutz', 'konter'],
-    gabe: 'Steinhaut', gabeText: 'Beginnt jeden Kampf mit 5 Block.',
+    relic: 'steinhaut',
     text: 'Viel Leben und Block, aber langsam.' },
   orakel: { name: 'Das Orakel', hp: 50,
     deck: ['funke', 'funke', 'funke', 'funke', 'schutz', 'schutz', 'schutz', 'schutz', 'aufladen', 'hinrichtung'],
-    gabe: 'Vorausschau', gabeText: 'Darf jeden Zug eine Vorhersage mehr machen.',
+    relic: 'kristallkugel', extra: '+25 % Chance auf eine Eingebung pro Zug.',
     text: 'Wer Code gut liest, wird mit ihm am stärksten.' },
 };
 
@@ -185,6 +185,7 @@ export const RUN_SKILLS = {
   fruehstart: { name: 'Frühstarter', text: 'Im ersten Zug jedes Kampfs +1 Energie.' },
   panzerhaut: { name: 'Panzerhaut', text: 'Zu Beginn jedes Zugs 3 Block.' },
   kraftreserve: { name: 'Kraftreserve', text: 'Zu Beginn jedes Kampfs +1 Stärke.' },
+  klarsicht: { name: 'Klarsicht', text: '+15 % Chance auf eine Eingebung pro Zug.' },
 };
 
 // ---------- Talentbaum (dauerhaft) ----------
@@ -197,7 +198,7 @@ export const TALENTS = {
   takt1: { cluster: 'Takt', name: 'Auswahl', text: 'Nach Elite-Kämpfen 4 statt 3 Karten zur Wahl.', x: 20, y: 78 },
   takt2: { cluster: 'Takt', name: 'Schneller Griff', text: 'Im ersten Zug jedes Kampfs 1 Karte mehr.', x: 8, y: 92, req: 'takt1' },
   gel1: { cluster: 'Gelehrte', name: 'Gute Frage', text: 'Der erste Hinweis in jedem Run ist kostenlos.', x: 80, y: 78 },
-  gel2: { cluster: 'Gelehrte', name: 'Hellseher', text: 'Zwei Vorhersagen pro Zug statt einer.', x: 92, y: 92, req: 'gel1' },
+  gel2: { cluster: 'Gelehrte', name: 'Hellseher', text: '+15 % Chance auf eine Eingebung pro Zug.', x: 92, y: 92, req: 'gel1' },
   gel3: { cluster: 'Gelehrte', name: 'Fleiß', text: '+10 EXP für jede gelöste Schmiede.', x: 66, y: 94, req: 'gel1' },
 };
 
@@ -207,14 +208,14 @@ export const TALENTS = {
 // 'zufall' wählt je Knoten gewichtet einen Raumtyp, 'pool' die möglichen Kämpfe.
 export const MAP_PLAN = [
   { typ: 'kampf', pool: ['tinte', 'rost'] },
-  { zufall: { kampf: 3, haendler: 1 }, pool: ['tinte', 'rost', 'teufel'] },
+  { zufall: { kampf: 3, haendler: 1, raetsel: 2 }, pool: ['tinte', 'rost', 'teufel'] },
   { zufall: { schmiede: 2, kampf: 2 }, pool: ['tinte', 'rost', 'teufel'], forges: ['vergeltung', 'aderlass'] },
   { zufall: { kampf: 3, elite: 2, rast: 1 }, pool: ['teufel', 'rost', 'tinte'] },
-  { zufall: { haendler: 1, rast: 1 } },
+  { zufall: { haendler: 1, rast: 1, raetsel: 1 } },
   { zufall: { debug: 1, kampf: 1, rast: 1 }, pool: ['teufel', 'rost', 'tinte'] },
-  { zufall: { kampf: 3, elite: 1 }, pool: ['biene_tinte', 'rost_biene', 'teufel'] },
+  { zufall: { kampf: 3, elite: 1, raetsel: 1 }, pool: ['biene_tinte', 'rost_biene', 'teufel'] },
   { zufall: { schmiede: 2, kampf: 2 }, pool: ['biene_tinte', 'rost_biene', 'teufel'], forges: ['trommelfeuer', 'flaechenbrand'] },
-  { zufall: { kampf: 2, haendler: 1 }, pool: ['biene_tinte', 'rost_biene'] },
+  { zufall: { kampf: 2, haendler: 1, raetsel: 1 }, pool: ['biene_tinte', 'rost_biene'] },
   { typ: 'rast' },
 ];
 export const MAP_COLS = 5;
@@ -227,7 +228,168 @@ export const ROOM_INFO = {
   debug: { name: 'Debug-Raum', icon: '🐞' },
   haendler: { name: 'Händler', icon: '⚖' },
   rast: { name: 'Rastplatz', icon: '🔥' },
+  raetsel: { name: 'Rätsel', icon: '?' },
   boss: { name: 'Boss', icon: '♛' },
 };
 
 export const EXP_PER_LEVEL = 50;
+
+// ---------- ?-Räume: Rätsel ----------
+// Der richtige Wert wird im Spiel mit Natter berechnet, hier steht nur Code und Variable.
+export const RIDDLES = {
+  tausch: { concept: 'basis', var: 'x', code: 'x = 4\ny = x * 3\nx = y - 5',
+    erklaerung: 'y bekommt 4 · 3 = 12. Danach wird x überschrieben: 12 − 5 = 7.' },
+  kopie: { concept: 'basis', var: 'b', code: 'a = 10\nb = a\na = 3',
+    erklaerung: 'b = a kopiert den Wert 10. Dass a danach 3 wird, ändert b nicht mehr.' },
+  liste: { concept: 'basis', var: 'summe', code: 'werte = [3, 8, 2]\nwerte[1] -= 5\nsumme = werte[0] + werte[1]',
+    erklaerung: 'Index 1 ist die 8 (gezählt wird ab 0). 8 − 5 = 3, also 3 + 3 = 6.' },
+  zweiifs: { concept: 'if', var: 'punkte', code: 'punkte = 7\nif punkte > 5:\n    punkte *= 2\nif punkte > 10:\n    punkte -= 4',
+    erklaerung: 'Zwei getrennte if: Erst wird 7 zu 14. Das zweite if prüft den neuen Wert, 14 > 10, also 14 − 4 = 10.' },
+  sonst: { concept: 'if', var: 'leben', code: 'leben = 12\nif leben < 10:\n    leben += 5\nelse:\n    leben -= 2',
+    erklaerung: '12 < 10 ist falsch, also läuft der else-Zweig: 12 − 2 = 10.' },
+  stufen: { concept: 'elif', var: 'y', code: 'x = 15\nif x > 20:\n    y = 1\nelif x > 10:\n    y = 2\nelif x > 5:\n    y = 3\nelse:\n    y = 4',
+    erklaerung: 'Nur der erste wahre Zweig läuft. 15 > 20 nein, 15 > 10 ja, also y = 2. Der Rest wird übersprungen.' },
+  zaehlen: { concept: 'for', var: 's', code: 's = 0\nfor i in range(1, 4):\n    s += i',
+    erklaerung: 'range(1, 4) liefert 1, 2, 3 (die 4 nicht). 1 + 2 + 3 = 6.' },
+  verdoppeln: { concept: 'for', var: 'n', code: 'n = 1\nfor i in range(3):\n    n *= 2',
+    erklaerung: 'Dreimal verdoppeln: 1 → 2 → 4 → 8.' },
+  halbieren: { concept: 'while', var: 'schritte', code: 'z = 20\nschritte = 0\nwhile z > 1:\n    z //= 2\n    schritte += 1',
+    erklaerung: '20 → 10 → 5 → 2 → 1. Das sind 4 Schritte, dann ist z > 1 falsch.' },
+};
+
+// ---------- ?-Räume: Entscheidungen ----------
+export const CHOICE_EVENTS = {
+  quelle: { icon: '⛲', titel: 'Die Quelle der Ausnahmen', text: 'Eine leuchtende Quelle. Wer daraus trinkt, wird zäher, aber etwas Fehlerhaftes kriecht mit hinein.',
+    optionen: [
+      { name: 'Trinken', text: '+8 maximales Leben, aber eine Bug-Karte (Ewige Schleife) kommt ins Deck.', wirkung: { maxLeben: 8, bug: 'ewige_schleife' } },
+      { name: 'Hände waschen', text: '10 Leben heilen.', wirkung: { heilen: 10 } },
+    ] },
+  buecherwurm: { icon: '🐛', titel: 'Der Bücherwurm', text: 'Ein dicker Wurm frisst sich durch Zauberbücher. Er ist hungrig.',
+    optionen: [
+      { name: 'Eine Karte verfüttern', text: 'Entferne eine Karte deiner Wahl aus dem Deck.', wirkung: { entfernen: true } },
+      { name: 'Ihm Gold geben', text: '20 Gold: Er spuckt eine zufällige neue Karte aus.', kosten: { gold: 20 }, wirkung: { karte: true } },
+      { name: 'Weitergehen', text: 'Nichts passiert.' },
+    ] },
+  altar: { icon: '🗿', titel: 'Der Blutaltar', text: 'Auf einem Altar liegen zwei glänzende Gegenstände. Eine Inschrift: „Nimm, aber zahle.“',
+    optionen: [
+      { name: 'Opfern', text: 'Verliere 8 Leben und wähle eines von zwei Relikten.', kosten: { leben: 8 }, wirkung: { relikt: 2 } },
+      { name: 'Gold aufsammeln', text: '+25 Gold liegen daneben.', wirkung: { gold: 25 } },
+    ] },
+};
+
+// ---------- Relikte ----------
+// Jedes Relikt ist eine Python-Funktion, die zu einem festen Zeitpunkt aufgerufen wird.
+// Relikte mit demselben Zeitpunkt laufen in der Reihenfolge, die der Spieler festlegt.
+// Variablen: leben, block, energie, staerke, ziel_leben, gegner_leben, runde, gold, merk (bleibt im Kampf erhalten);
+// bei karte_gespielt zusätzlich typ ("angriff"/"skill") und kosten.
+export const HOOKS = {
+  kampf_start: 'zu Beginn jedes Kampfs',
+  zug_start: 'zu Beginn jedes Zugs',
+  karte_gespielt: 'nach jeder gespielten Karte',
+  zug_ende: 'am Ende deines Zugs',
+  kampf_ende: 'nach jedem gewonnenen Kampf',
+};
+export const RELICS = {
+  glutstein: { name: 'Glutstein', icon: '🔥', hook: 'kampf_start', code: 'staerke += 1', start: 'magierin' },
+  steinhaut: { name: 'Steinhaut', icon: '🪨', hook: 'kampf_start', code: 'block += 5', start: 'waechter' },
+  kristallkugel: { name: 'Kristallkugel', icon: '🔮', hook: 'zug_start', code: 'if runde == 1:\n    energie += 1', start: 'orakel' },
+  kiesel: { name: 'Kiesel', icon: '🪙', hook: 'zug_start', code: 'block += 3' },
+  spiegelschild: { name: 'Spiegelschild', icon: '🪞', hook: 'zug_start', code: 'if block < 12:\n    block *= 2' },
+  verstaerker: { name: 'Verstärker', icon: '✖', hook: 'kampf_start', code: 'staerke *= 2' },
+  lupe: { name: 'Lupe', icon: '🔍', hook: 'zug_start', code: 'if ziel_angriff > 8:\n    block += 6' },
+  blutkristall: { name: 'Blutkristall', icon: '🩸', hook: 'karte_gespielt', code: 'if typ == "angriff":\n    leben += 1' },
+  zaehlwerk: { name: 'Zählwerk', icon: '⚙', hook: 'karte_gespielt', code: 'merk += 1\nif merk % 3 == 0:\n    energie += 1' },
+  dornen: { name: 'Dornenkranz', icon: '🌵', hook: 'zug_ende', code: 'for i in range(len(gegner_leben)):\n    gegner_leben[i] -= 2' },
+  sparschwein: { name: 'Sparschwein', icon: '🐷', hook: 'zug_ende', code: 'if energie > 0:\n    block += 4 * energie' },
+  goldzahn: { name: 'Goldzahn', icon: '🦷', hook: 'kampf_ende', code: 'gold += 8' },
+  pflaster: { name: 'Pflaster', icon: '🩹', hook: 'kampf_ende', code: 'leben += 4' },
+  wetzstein: { name: 'Wetzstein', icon: '🗡', hook: 'karte_gespielt', code: 'if kosten >= 2:\n    staerke += 1' },
+};
+
+// ---------- Evolutionen (wie in Vampire Survivors) ----------
+// Zwei Karten verschmelzen am Rastplatz zu einer stärkeren, wenn eine davon verbessert (+) ist. Den neuen Code baut man selbst (Zeilen ordnen).
+// Das Rezept steht im Zauberbuch erst als ???, bis man es entdeckt hat.
+export const EVOLUTIONS = {
+  funkenkette: { zutaten: ['funke', 'doppelschlag'], forge: 'evo_funkenkette' },
+  bollwerk: { zutaten: ['schutz', 'konter'], forge: 'evo_bollwerk' },
+  raserei: { zutaten: ['wut', 'salve'], forge: 'evo_raserei' },
+  gericht: { zutaten: ['hinrichtung', 'kettenblitz'], forge: 'evo_gericht' },
+};
+Object.assign(FORGES, {
+  evo_funkenkette: {
+    titel: 'Funkenkette', stufe: 'Evolution', modus: 'parsons', konzepte: ['for'], evo: 'funkenkette',
+    auftrag: 'Verschmilz Funke und Doppelschlag: Lege schaden = 5 + staerke an und triff das Ziel mit einer Schleife dreimal mit schaden.',
+    zeilen: ['schaden = 5 + staerke', 'for i in range(3):', '    ziel_leben -= schaden'],
+    falsch: ['    ziel_leben -= 5'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 40, staerke: 0 }, { ziel_leben: 40, staerke: 2 }],
+    hinweise: ['Erst die Variable, dann die Schleife, die sie benutzt.', 'ziel_leben -= 5 vergisst die Stärke. Nimm die Variable schaden.', 'schaden = 5 + staerke, dann for i in range(3):, eingerückt ziel_leben -= schaden.'],
+    karte: { name: 'Funkenkette', cost: 2, type: 'angriff', target: true, text: 'Evolution: dreimal 5 plus Stärke.' },
+  },
+  evo_bollwerk: {
+    titel: 'Bollwerk', stufe: 'Evolution', modus: 'parsons', konzepte: ['if'], evo: 'bollwerk',
+    auftrag: 'Verschmilz Schutz und Konter: Immer 5 Block. Wenn das Ziel mehr als 5 Schaden ankündigt, noch einmal 10 Block dazu, sonst 5.',
+    zeilen: ['block += 5', 'if ziel_angriff > 5:', '    block += 10', 'else:', '    block += 5'],
+    falsch: ['    block = 10'],
+    pruefe: ['block'],
+    tests: [{ block: 0, ziel_angriff: 8 }, { block: 3, ziel_angriff: 2 }, { block: 0, ziel_angriff: 5 }],
+    hinweise: ['Die erste Zeile gilt immer, sie steht nicht eingerückt.', 'block = 10 überschreibt den Block. Du willst ihn erhöhen.', 'block += 5, dann if ziel_angriff > 5:, eingerückt block += 10, dann else: mit block += 5.'],
+    karte: { name: 'Bollwerk', cost: 1, type: 'skill', target: true, text: 'Evolution: 15 Block bei starkem Angriff, sonst 10.' },
+  },
+  evo_raserei: {
+    titel: 'Raserei', stufe: 'Evolution', modus: 'parsons', konzepte: ['for'], evo: 'raserei',
+    auftrag: 'Verschmilz Wut und Salve: Dreimal hintereinander: Erst +1 Stärke, dann 3 plus Stärke Schaden. Jeder Treffer wird stärker.',
+    zeilen: ['for i in range(3):', '    staerke += 1', '    ziel_leben -= 3 + staerke'],
+    falsch: ['staerke += 1'],
+    pruefe: ['ziel_leben', 'staerke'],
+    tests: [{ ziel_leben: 40, staerke: 0 }, { ziel_leben: 40, staerke: 2 }],
+    hinweise: ['Beide Zeilen gehören in die Schleife, also eingerückt.', 'Die Zeile ohne Einrückung liefe nur einmal vor der Schleife.', 'for i in range(3):, darunter eingerückt staerke += 1 und ziel_leben -= 3 + staerke.'],
+    karte: { name: 'Raserei', cost: 2, type: 'angriff', target: true, text: 'Evolution: dreimal Stärke +1 und Treffer.' },
+  },
+  evo_gericht: {
+    titel: 'Gericht', stufe: 'Evolution', modus: 'parsons', konzepte: ['for', 'if'], evo: 'gericht',
+    auftrag: 'Verschmilz Hinrichtung und Kettenblitz: Gehe durch alle Gegner. Wer weniger als 12 Leben hat, fällt sofort, alle anderen bekommen 5 Schaden.',
+    zeilen: ['for i in range(len(gegner_leben)):', '    if gegner_leben[i] < 12:', '        gegner_leben[i] = 0', '    else:', '        gegner_leben[i] -= 5'],
+    falsch: ['    if gegner_leben < 12:'],
+    pruefe: ['gegner_leben'],
+    tests: [{ gegner_leben: [20, 8] }, { gegner_leben: [11, 12] }, { gegner_leben: [] }],
+    hinweise: ['Für jeden Gegner brauchst du seinen Index i.', 'gegner_leben < 12 vergleicht die ganze Liste. Du brauchst gegner_leben[i].', 'for i in range(len(gegner_leben)):, darin if gegner_leben[i] < 12: … else: …'],
+    karte: { name: 'Gericht', cost: 2, type: 'angriff', target: false, text: 'Evolution: Schwache Gegner fallen, alle anderen bekommen 5.' },
+  },
+});
+
+// ---------- Erfolge: schalten neue Relikte frei ----------
+export const ACHIEVEMENTS = {
+  unverwundbar: { name: 'Unberührt', text: 'Gewinne einen Kampf, ohne Leben zu verlieren.', relic: 'schutzamulett' },
+  hellseher: { name: 'Hellseher', text: 'Sag in einem Run 3 Eingebungen richtig vorher.', relic: 'drittes_auge' },
+  minimalist: { name: 'Minimalist', text: 'Gewinne einen Kampf mit höchstens 8 Karten im Deck.', relic: 'feder' },
+  meisterschmied: { name: 'Meisterschmied', text: 'Hol in einer schweren Schmiede 3 Sterne.', relic: 'amboss' },
+  raetselmeister: { name: 'Rätselmeister', text: 'Löse 5 verschiedene Rätsel.', relic: 'eule' },
+  alchemist: { name: 'Alchemist', text: 'Verschmilz zum ersten Mal zwei Karten.', relic: 'kessel' },
+};
+Object.assign(RELICS, {
+  schutzamulett: { name: 'Schutzamulett', icon: '🛡', hook: 'kampf_start', code: 'block += 8', unlock: 'unverwundbar' },
+  drittes_auge: { name: 'Drittes Auge', icon: '👁', hook: 'zug_start', code: 'if runde % 2 == 0:\n    energie += 1', unlock: 'hellseher' },
+  feder: { name: 'Feder', icon: '🪶', hook: 'zug_start', code: 'if runde == 1:\n    staerke += 2', unlock: 'minimalist' },
+  amboss: { name: 'Amboss', icon: '⚒', hook: 'karte_gespielt', code: 'if typ == "skill":\n    block += 2', unlock: 'meisterschmied' },
+  eule: { name: 'Eule', icon: '🦉', hook: 'zug_ende', code: 'if block == 0:\n    leben += 2', unlock: 'raetselmeister' },
+  kessel: { name: 'Kessel', icon: '🧪', hook: 'kampf_ende', code: 'leben += 2\ngold += 4', unlock: 'alchemist' },
+});
+
+// ---------- Boss-Regeln (wie die Boss-Blinds in Balatro) ----------
+export const RULES = {
+  staerke_null: { name: 'Kraftlos', code: 'staerke = 0  # vor jeder Karte', text: 'Deine Karten sehen staerke immer als 0. Stärke, die du aufbaust, bleibt trotzdem erhalten.' },
+  if_teuer: { name: 'Verzweigungssteuer', code: 'if "if" in karte:\n    kosten += 1', text: 'Karten mit if kosten 1 Energie mehr.' },
+  lang_teuer: { name: 'Kurz fassen!', code: 'if zeilen > 2:\n    kosten += 1', text: 'Karten mit mehr als 2 Zeilen Code kosten 1 Energie mehr.' },
+};
+
+// ---------- Prüfungsstufen (wie Ascension) ----------
+// Nach einem Sieg wird die nächste Stufe frei. Jede Stufe enthält alle vorherigen.
+export const STUFEN = [
+  'Normal',
+  'Gegner haben 15 % mehr Leben.',
+  'Elite-Kämpfe haben eine Sonderregel.',
+  'Du startest mit der Bug-Karte Zaunpfahl.',
+  'Rastplätze heilen nur 10 statt 15.',
+  'Der Boss hat 25 % mehr Leben.',
+];

@@ -1,6 +1,7 @@
 // Räume außerhalb des Kampfs: Schmiede, Debug-Raum, Händler, Rastplatz, Belohnung, Level-up.
-import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL } from './data.js';
-import { game, save, shuffle, pick, rng, cardDef, hasTalent, makeCard, conceptUnlocked } from './state.js';
+import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS } from './data.js';
+import { game, save, shuffle, pick, rng, cardDef, hasTalent, makeCard, conceptUnlocked, noteBook } from './state.js';
+import { relicPool, relicView, gainRelic, offerRelic, unlockAchievement } from './relics.js';
 import { runTests, checkCode, runPy } from './natter.js';
 import { app, esc, codeView, toast, modal, cardView } from './ui.js';
 
@@ -88,7 +89,7 @@ function levelUps(done) {
     </div>`, { wide: true });
   el.querySelectorAll('[data-c]').forEach((c) => c.addEventListener('click', () => {
     const k = c.dataset.c;
-    if (k === 'card') run.deck.push(makeCard(cardId));
+    if (k === 'card') { run.deck.push(makeCard(cardId)); noteBook('cards', cardId); }
     if (k === 'skill') run.skills.push(skill);
     if (k === 'hp') { run.maxHp += 8; run.hp += 8; }
     close();
@@ -233,13 +234,24 @@ function finishForge(key, f, st, code, done) {
   let exp = (schwer ? 40 : 20) + (stars - 1) * (schwer ? 10 : 5) - st.expPenalty;
   if (hasTalent('gel3')) exp += 10;
   exp = Math.max(5, exp);
+  if (f.stufe === 'schwer' && st.mode === 'frei' && stars === 3) unlockAchievement('meisterschmied');
+  if (f.evo) {
+    // Evolution: die beiden Zutaten verschwinden, die neue Karte kommt dazu
+    for (const z of EVOLUTIONS[f.evo].zutaten) {
+      const up = run.deck.findIndex((c) => c.id === z && c.up);
+      const i = up >= 0 ? up : run.deck.findIndex((c) => c.id === z);
+      if (i >= 0) run.deck.splice(i, 1);
+    }
+    noteBook('evos', f.evo);
+    unlockAchievement('alchemist');
+  }
   const id = `forge_${key}_${run.deck.length}`;
-  run.custom[id] = { ...f.karte, code: cleanCode, forged: true, concept: (f.konzepte ?? ['basis'])[0] };
+  run.custom[id] = { ...f.karte, code: cleanCode, forged: true, evolved: !!f.evo, concept: (f.konzepte ?? ['basis'])[0] };
   run.deck.push(makeCard(id));
   run.forgesDone.push(key);
   awardStars(key, stars);
   const { el, close } = modal(`
-    <h2>Geschmiedet!</h2>
+    <h2>${f.evo ? '✨ Evolution!' : 'Geschmiedet!'}</h2>
     <div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
     <p class="hint small">★ alle Tests bestanden · ★ ohne Hinweis · ★ ${st.mode === 'frei' ? `höchstens ${f.maxZeilen} Zeilen` : 'beim ersten Prüfen richtig'}</p>
     ${cardView(run.custom[id], { lesehilfe: true })}
@@ -312,6 +324,9 @@ export function debugRoom(done) {
 export function shopRoom(done) {
   const run = game.run;
   const offers = shuffle(cardPool()).slice(0, 3).map((id) => ({ id, price: 40 + Math.floor(rng() * 4) * 10, sold: false }));
+  const relic = shuffle(relicPool())[0];
+  let relicSold = !relic;
+  const relicPrice = 70 + Math.floor(rng() * 3) * 10;
   let healed = false;
   const render = () => {
     const removePrice = 50 + 25 * run.removeCount;
@@ -325,6 +340,9 @@ export function shopRoom(done) {
       <div class="panel-title">Karten</div>
       <div class="offers cards">${offers.map((o, i) => o.sold ? '<div class="offer sold">verkauft</div>' : `<div class="offer">${cardView(CARDS[o.id], { lesehilfe: lese() })}
         <button class="btn" data-buy="${i}" ${run.gold >= o.price ? '' : 'disabled'}>${o.price} Gold</button></div>`).join('')}</div>
+      ${relic ? `<div class="panel-title">Relikt</div>
+      <div class="offers">${relicSold ? '<div class="offer sold">verkauft</div>' : `<div class="offer">${relicView(relic)}
+        <button class="btn buy-relic" ${run.gold >= relicPrice ? '' : 'disabled'}>${relicPrice} Gold</button></div>`}</div>` : ''}
       <div class="panel-title">Dienste</div>
       <div class="row">
         <button class="btn secondary remove" ${run.gold >= removePrice ? '' : 'disabled'}>Karte entfernen (${removePrice} Gold)</button>
@@ -337,10 +355,17 @@ export function shopRoom(done) {
       const o = offers[Number(b.dataset.buy)];
       run.gold -= o.price;
       run.deck.push(makeCard(o.id));
+      noteBook('cards', o.id);
       o.sold = true;
       save();
       render();
     }));
+    el.querySelector('.buy-relic')?.addEventListener('click', () => {
+      run.gold -= relicPrice;
+      relicSold = true;
+      gainRelic(relic);
+      render();
+    });
     el.querySelector('.remove').addEventListener('click', () => chooseCard('Welche Karte soll weg?', run.deck, (card) => {
       run.gold -= removePrice;
       run.removeCount++;
@@ -410,18 +435,35 @@ export function chooseCard(title, cards, onPick, { showUp = false } = {}) {
 }
 
 // ---------- Rastplatz ----------
+/** Rezepte, für die beide Zutaten im Deck liegen und die Konzepte gelernt sind. */
+export function availableEvolutions() {
+  const deck = game.run.deck;
+  const ids = deck.map((c) => c.id);
+  return Object.keys(EVOLUTIONS).filter((k) => EVOLUTIONS[k].zutaten.every((z) => ids.includes(z))
+    && deck.some((c) => c.up && EVOLUTIONS[k].zutaten.includes(c.id))
+    && (FORGES[EVOLUTIONS[k].forge].konzepte ?? []).every((c) => conceptUnlocked(c)));
+}
+
 export function restRoom(done) {
   const run = game.run;
   const upgradable = run.deck.filter((c) => !c.up && (CARDS[c.id]?.up));
+  const heal = (run.stufe ?? 0) >= 4 ? 10 : 15;
+  const evos = availableEvolutions();
   app().innerHTML = `<div class="room rest">
     <h2>🔥 Rastplatz</h2><p>Du hast ❤ ${run.hp} / ${run.maxHp}. Wähle eins:</p>
     <div class="choices">
-      <div class="choice" data-c="heal"><div class="choice-title">Ausruhen</div><p>15 Leben heilen.</p></div>
+      <div class="choice" data-c="heal"><div class="choice-title">Ausruhen</div><p>${heal} Leben heilen.</p></div>
+      ${evos.length ? `<div class="choice evo" data-c="evo"><div class="choice-title">✨ Verschmelzen</div><p>${evos.map((k) => EVOLUTIONS[k].zutaten.map((z) => esc(CARDS[z].name)).join(' + ')).join('<br>')}<br>Zwei Karten werden zu einer stärkeren. Den Code baust du selbst.</p></div>` : ''}
       <div class="choice ${upgradable.length ? '' : 'disabled'}" data-c="up"><div class="choice-title">Karte verbessern</div><p>Ändert den Code einer Karte: aus range(3) wird range(4), aus -= 6 wird -= 9.</p></div>
     </div></div>`;
   app().querySelector('[data-c="heal"]').addEventListener('click', () => {
-    run.hp = Math.min(run.maxHp, run.hp + 15);
+    run.hp = Math.min(run.maxHp, run.hp + heal);
     done();
+  });
+  app().querySelector('[data-c="evo"]')?.addEventListener('click', () => {
+    if (evos.length === 1) { forgeRoom(EVOLUTIONS[evos[0]].forge, done); return; }
+    const { el, close } = modal(`<h3>Was verschmelzen?</h3><div class="choices">${evos.map((k) => `<div class="choice" data-e="${k}"><div class="choice-title">${EVOLUTIONS[k].zutaten.map((z) => esc(CARDS[z].name)).join(' + ')}</div></div>`).join('')}</div>`, { wide: true });
+    el.querySelectorAll('[data-e]').forEach((d) => d.addEventListener('click', () => { close(); forgeRoom(EVOLUTIONS[d.dataset.e].forge, done); }));
   });
   app().querySelector('[data-c="up"]').addEventListener('click', () => {
     if (!upgradable.length) return;
@@ -439,13 +481,15 @@ export function rewardScreen(kind, done) {
   const choices = shuffle(cardPool()).slice(0, n);
   save();
   app().innerHTML = `<div class="room reward">
-    <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold})</p>
+    <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold})${kind === 'elite' ? ' · Danach wählst du ein Relikt.' : ''}</p>
     <p>Wähle eine Karte für dein Deck, oder überspringe. Ein schlankes Deck ist oft stärker.</p>
     <div class="card-grid">${choices.map((id) => `<div data-id="${id}">${cardView(CARDS[id], { lesehilfe: lese() })}</div>`).join('')}</div>
     <div class="row"><button class="btn secondary skip">Überspringen</button></div></div>`;
+  const next = () => (kind === 'elite' ? offerRelic(2, done) : done());
   app().querySelectorAll('[data-id]').forEach((d) => d.addEventListener('click', () => {
     run.deck.push(makeCard(d.dataset.id));
-    done();
+    noteBook('cards', d.dataset.id);
+    next();
   }));
-  app().querySelector('.skip').addEventListener('click', () => done());
+  app().querySelector('.skip').addEventListener('click', () => next());
 }

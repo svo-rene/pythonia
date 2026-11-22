@@ -14,13 +14,20 @@ Dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nö
 
 ## Inhalt des Prototyps (Akt 1)
 
-- Drei Figuren mit eigenem Startdeck und eigener Gabe (Funkenmagierin, Steinwächter, Orakel)
-- Höhlenkarte als Knotengraph wie bei Slay the Spire, bei jedem Run neu erzeugt (10 Ebenen und Boss)
-- Kampfbühne mit gezeichneten Figuren; Leben, Block und Energie stehen über den Figuren, die Absicht der Gegner als Code darüber
-- Kampf: Karten- und Gegnercode läuft Zeile für Zeile mit Variablenanzeige, Vorhersage einmal pro Zug (richtig = Wirkung ×1,5)
-- 12 Karten, 6 Gegner, 1 Boss, 2 Bug-Karten (Zaunpfahl, Ewige Schleife)
-- 4 Schmieden (Zeilen ordnen oder frei schreiben), automatisch gegen Testfälle geprüft, mit Sternen und gestuften Hinweisen; der geprüfte Code wird zur Karte
-- Händler mit den Konzepten `elif`, `for`, `while` (Freischaltung nach kurzer Nachverfolgungsaufgabe), Rastplatz mit Karten-Upgrade
+- Drei Figuren mit eigenem Startdeck und eigenem Start-Relikt (Funkenmagierin, Steinwächter, Orakel)
+- Höhlenkarte als Knotengraph wie bei Slay the Spire, bei jedem Run neu erzeugt (10 Ebenen und Boss); Schmiede und Debug-Raum sind Abzweigungen, keine Pflicht
+- Kampfbühne: links deine Werte, rechts die der Gegner, die Absicht der Gegner als Code über ihnen
+- Kampf: Karten- und Gegnercode läuft Zeile für Zeile mit Variablenanzeige
+- **Eingebung:** Mit etwas Glück leuchtet pro Zug eine Karte; wer ihre Wirkung richtig vorhersagt, bekommt die doppelte Wirkung. Die Chance steigt mit Level, Orakel, Talent und Run-Skill
+- **Relikte** (14 + 6 freischaltbare) sind Python-Funktionen zu festen Zeitpunkten (`kampf_start`, `zug_start`, `karte_gespielt`, `zug_ende`, `kampf_ende`). Die Reihenfolge legt der Spieler fest und sie zählt (wie die Joker in Balatro)
+- **?-Räume:** 9 Code-Rätsel (Wert am Ende vorhersagen, mit Schritt-für-Schritt-Auflösung) und 3 Entscheidungs-Ereignisse
+- **Evolutionen** (wie in Vampire Survivors): Zwei Karten verschmelzen am Rastplatz, wenn eine verbessert ist; den neuen Code ordnet man selbst
+- **Zauberbuch** mit Karten, Relikten, Evolutionen und 6 Erfolgen, die neue Relikte freischalten
+- **Klassen-Code:** Gleicher Code = gleiche Höhle und gleiche Angebote, Tages-Code per Knopf
+- **Prüfungsstufen 1–5** (wie Ascension), frei nach jedem Sieg; Boss-Regeln wie die Boss-Blinds in Balatro
+- **Rückblick** am Ende eines Runs: stärkster Zauber, fleißigstes Relikt, Kommentar des Meisters
+- 12 Karten, 6 Gegner, 1 Boss, 2 Bug-Karten, 4 Schmieden, 4 Evolutionen
+- Händler mit den Konzepten `elif`, `for`, `while`, Karten, einem Relikt und Kartenentfernen
 - Level-ups, Run-Skills, Talentbaum mit 10 Knoten
 - Speichern im Browser, Spielstand-Code zum Mitnehmen
 
@@ -28,11 +35,13 @@ Dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nö
 
 | Datei | Inhalt |
 | --- | --- |
-| `js/data.js` | alle Inhalte: Helden, Karten, Gegner, Schmieden, Bugs, Konzepte, Talente, Bauplan der Höhle |
+| `js/data.js` | alle Inhalte: Helden, Karten, Gegner, Schmieden, Bugs, Konzepte, Talente, Bauplan der Höhle, Rätsel, Ereignisse, Relikte, Evolutionen, Erfolge, Regeln, Stufen |
 | `js/natter.js` | Anbindung an Natter: Ausführen mit Schrittspur, Tests, Sperren |
 | `js/combat.js` | Kartenkampf und Animation |
-| `js/rooms.js` | Schmiede, Debug-Raum, Händler, Rastplatz, Belohnung, Level-up |
-| `js/main.js` | Titel, Karte, Talentbaum, Run-Ende |
+| `js/rooms.js` | Schmiede, Debug-Raum, Händler, Rastplatz (mit Evolutionen), Belohnung, Level-up |
+| `js/events.js` | ?-Räume: Code-Rätsel und Entscheidungen |
+| `js/relics.js` | Relikte: Anzeige, Auswahl, Reihenfolge, Erfolge |
+| `js/main.js` | Titel, Heldenauswahl (Klassen-Code, Stufe), Karte, Zauberbuch, Talentbaum, Run-Ende mit Rückblick |
 | `js/state.js` | Spielstand, Zufall, Erzeugung der Höhlenkarte |
 | `js/sprites.js` | Figuren als SVG-Zeichnungen, Platz für eigene Bilder |
 | `js/fx.js` | Kampfeffekte: Geschosse, Schild, Heilung, Hiebe |
