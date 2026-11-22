@@ -449,7 +449,7 @@ Object.assign(ENEMIES, {
   echofledermaus: { name: 'Echofledermaus', hp: 34, mem: { echo: [] },
     code: 'echo.append(3)\nfor e in echo:\n    leben -= e' },
   kristalldieb: { name: 'Kristalldieb', hp: 38,
-    code: 'if len(kristalle) > 0:\n    kristalle.pop()\n    leben -= 5\nelse:\n    leben -= 12' },
+    code: 'if len(kristalle) > 0:\n    kristalle.pop()\n    leben -= 4\nelse:\n    leben -= 9' },
   minenwurm: { name: 'Minenwurm', hp: 42, mem: { minen: [4, 9, 6] },
     code: 'leben -= minen[0]\nminen.append(minen.pop(0) + 1)' },
   zahlenhydra: { name: 'Zahlenhydra', hp: 85, elite: true, mem: { koepfe: [5] },
@@ -900,14 +900,14 @@ ACTS[2].intro = 'In den Listengruben sammelst du Kristalle in einer Liste (appen
 // =====================================================================
 Object.assign(ENEMIES, {
   spiegelschleim: { name: 'Spiegelschleim', hp: 24, teilt: true,
-    code: 'def echo(n):\n    if n == 0:\n        return 0\n    return 2 + echo(n - 1)\nleben -= echo(mein_leben // 6 + 1)' },
-  turmwaechter: { name: 'Turmwächter', hp: 46, mem: { runde: 0 },
+    code: 'def echo(n):\n    if n == 0:\n        return 0\n    return 2 + echo(n - 1)\nleben -= echo(mein_leben // 8 + 1)' },
+  turmwaechter: { name: 'Turmwächter', hp: 40, mem: { runde: 0 },
     code: 'def schlag(stufe):\n    return stufe * 2 + 3\nrunde += 1\nleben -= schlag(runde)' },
   rekursionsrabe: { name: 'Rekursionsrabe', hp: 36, mem: { runde: 0 },
     code: 'def flug(n):\n    if n <= 1:\n        return 1\n    return flug(n - 1) + flug(n - 2)\nrunde += 1\nleben -= flug(runde + 2)' },
   spiegelritter: { name: 'Der Spiegelritter', hp: 100, elite: true,
     code: 'def spiegel(x):\n    if x < 5:\n        return x\n    return spiegel(x // 2) + 2\nleben -= spiegel(block) + 8' },
-  spiegelkoenigin: { name: 'Die Spiegelkönigin', hp: 200, boss: true, mem: { runde: 0 },
+  spiegelkoenigin: { name: 'Die Spiegelkönigin', hp: 180, boss: true, mem: { runde: 0 },
     code: 'def welle(n):\n    if n == 0:\n        return 0\n    return 4 + welle(n - 1)\nrunde += 1\nif runde % 3 == 0:\n    mein_leben += welle(runde // 3 + 1)\nelse:\n    leben -= welle(runde % 3 + 2)' },
 });
 Object.assign(ENCOUNTERS, {
@@ -1047,8 +1047,8 @@ Object.assign(ENEMIES, {
     code: 'class Krieger:\n    def angriff(self):\n        return 7\nclass Schuetze(Krieger):\n    def angriff(self):\n        return super().angriff() + 5\nleben -= Schuetze().angriff()' },
   golemfabrik: { name: 'Golem-Fabrik', hp: 110, elite: true, mem: { runde: 0, beschwoere: '' },
     code: 'class Fabrik:\n    def baue(self, runde):\n        if runde % 2 == 1:\n            return "minigolem"\n        return ""\nrunde += 1\nbeschwoere = Fabrik().baue(runde)\nleben -= 7' },
-  urklasse: { name: 'Die Urklasse', hp: 210, boss: true, mem: { runde: 0, beschwoere: '' },
-    code: 'class Zauber:\n    def wirke(self):\n        return 10\nclass Feuer(Zauber):\n    def wirke(self):\n        return super().wirke() + 8\nrunde += 1\nif runde % 3 == 0:\n    beschwoere = "minigolem"\nelif runde % 3 == 1:\n    leben -= Feuer().wirke()\nelse:\n    leben -= Zauber().wirke()\n    block = 0' },
+  urklasse: { name: 'Die Urklasse', hp: 190, boss: true, mem: { runde: 0, beschwoere: '' },
+    code: 'class Zauber:\n    def wirke(self):\n        return 8\nclass Feuer(Zauber):\n    def wirke(self):\n        return super().wirke() + 6\nrunde += 1\nif runde % 3 == 0:\n    beschwoere = "minigolem"\nelif runde % 3 == 1:\n    leben -= Feuer().wirke()\nelse:\n    leben -= Zauber().wirke()\n    block = 0' },
 });
 Object.assign(ENCOUNTERS, {
   golem: ['ruestungsgolem'],

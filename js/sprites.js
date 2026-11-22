@@ -121,25 +121,25 @@ export const BILDER = {
   minenwurm: 'assets/figuren/minenwurm.png',
   zahlenhydra: 'assets/figuren/zahlenhydra.png',
   mischer: 'assets/figuren/mischer.png',
+  spiegelschleim: 'assets/figuren/spiegelschleim.png',
+  turmwaechter: 'assets/figuren/turmwaechter.png',
+  rekursionsrabe: 'assets/figuren/rekursionsrabe.png',
+  spiegelritter: 'assets/figuren/spiegelritter.png',
+  spiegelkoenigin: 'assets/figuren/spiegelkoenigin.png',
+  ruestungsgolem: 'assets/figuren/ruestungsgolem.png',
+  minigolem: 'assets/figuren/minigolem.png',
+  schildknappe: 'assets/figuren/schildknappe.png',
+  bogenschuetze: 'assets/figuren/bogenschuetze.png',
+  golemfabrik: 'assets/figuren/golemfabrik.png',
+  urklasse: 'assets/figuren/urklasse.png',
+  croupier: 'assets/figuren/croupier.png',
+  gladiator: 'assets/figuren/gladiator.png',
+  wolfsmutter: 'assets/figuren/wolfsmutter.png',
+  bibliothekar: 'assets/figuren/bibliothekar.png',
 };
 
 // Akt-2-Gegner nutzen vorerst umgefärbte Bilder (eigene Meshy-Figuren können später folgen).
 const VARIANTEN = {
-  croupier: ['gaukler', 'hue-rotate(200deg) saturate(1.2)', true],
-  gladiator: ['waechter', 'hue-rotate(330deg) saturate(2) sepia(0.3)', true],
-  wolfsmutter: ['zahlenhydra', 'hue-rotate(80deg) saturate(1.2)'],
-  bibliothekar: ['orakel', 'hue-rotate(60deg) sepia(0.6)', true],
-  spiegelschleim: ['tintenfleck', 'hue-rotate(140deg) saturate(0.4) brightness(1.5)'],
-  turmwaechter: ['rostwaechter', 'grayscale(0.7) brightness(1.2)'],
-  rekursionsrabe: ['echofledermaus', 'grayscale(0.9) brightness(0.8)'],
-  spiegelritter: ['waechter', 'hue-rotate(180deg) saturate(1.5) brightness(1.1)', true],
-  spiegelkoenigin: ['eishexe', 'hue-rotate(250deg) saturate(1.6)', true],
-  ruestungsgolem: ['mischer', 'hue-rotate(40deg) saturate(1.3)'],
-  minigolem: ['mischer', 'hue-rotate(100deg) brightness(1.2)'],
-  schildknappe: ['waechter', 'hue-rotate(40deg) saturate(1.6)', true],
-  bogenschuetze: ['gaukler', 'hue-rotate(80deg) saturate(1.3)', true],
-  golemfabrik: ['rostwaechter', 'hue-rotate(20deg) saturate(1.8) brightness(1.1)'],
-  urklasse: ['verzweiger', 'hue-rotate(60deg) saturate(1.8)'],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {

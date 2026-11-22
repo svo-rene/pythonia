@@ -101,3 +101,7 @@ Erzeugt mit demselben Stil-Zusatz wie oben, per Meshy-API, gerendert mit `tools/
 | `minenwurm` | chubby segmented brown cave worm with a miners helmet and headlamp, body rings studded with small round red mines, grumpy face |
 | `zahlenhydra` | small three-headed teal hydra dragon, glowing number on each forehead, round belly, stubby legs, short wings |
 | `mischer` (Boss) | giant card shuffling golem made of floating stone tablets and playing cards, glowing magenta core, four arms shuffling cards, one large eye |
+
+### Akt 3, Akt 4 und freie Welten
+
+Ebenfalls per Meshy-API erzeugt (Licht 1,3): `spiegelschleim`, `turmwaechter`, `rekursionsrabe`, `spiegelritter`, `spiegelkoenigin`, `ruestungsgolem`, `minigolem`, `schildknappe`, `bogenschuetze`, `golemfabrik`, `urklasse`, `croupier`, `gladiator`, `wolfsmutter`, `bibliothekar`. Die genauen Prompts stehen im Erzeugungsskript; Stil wie oben.
