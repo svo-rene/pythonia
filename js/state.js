@@ -17,6 +17,8 @@ export function newMeta() {
     book: { cards: [], relics: [], evos: [] },   // Zauberbuch: schon gesehene Dinge
     achievements: [],
     stufeMax: 0,        // höchste freigeschaltete Prüfungsstufe
+    builds: true,       // die drei Grund-Spielweisen gibt es von Anfang an
+    advanced: false,    // Eis, Kombo und zwei neue Figuren: nach dem ersten Sieg über Akt 1
   };
 }
 
@@ -33,6 +35,8 @@ export function load() {
     const data = JSON.parse(raw);
     game.meta = { ...newMeta(), ...data.meta, settings: { ...newMeta().settings, ...(data.meta?.settings ?? {}) } };
     game.meta.book = { ...newMeta().book, ...(data.meta?.book ?? {}) };
+    game.meta.builds = true;
+    if (game.meta.wins > 0) game.meta.advanced = true;   // wer schon gewonnen hat, hat Akt 1 geschafft
     game.run = data.run?.map ? data.run : null;   // Runs aus der alten Kartenversion verwerfen
     if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; game.run.act ??= 1; }
   } catch { /* kaputter Spielstand: neu anfangen */ }
@@ -109,7 +113,8 @@ export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
     seedCode,
     stufe,
     act: 1,
-    relics: Object.keys(RELICS).filter((k) => RELICS[k].start === heroId),
+    // Mit freigeschalteten Spielweisen startet jede Figur mit ihrer Grundeigenschaft
+    relics: hero.trait ? [hero.trait] : Object.keys(RELICS).filter((k) => RELICS[k].start === heroId),
     stats: newStats(),
     hero: heroId,
     map: null,

@@ -123,6 +123,8 @@ const VARIANTEN = {
   minenwurm: ['tintenfleck', 'hue-rotate(40deg) sepia(0.5) saturate(2)'],
   zahlenhydra: ['schleifenschlange', 'hue-rotate(250deg) saturate(1.4)'],
   mischer: ['verzweiger', 'hue-rotate(160deg) saturate(1.6)'],
+  eishexe: ['magierin', 'hue-rotate(170deg) saturate(1.3)'],
+  gaukler: ['orakel', 'hue-rotate(110deg) saturate(1.6)'],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {
@@ -131,5 +133,5 @@ const img = (id) => {
   return `<img class="sprite bild" src="${BILDER[id]}" alt="" draggable="false">`;
 };
 
-export const heroSprite = (id) => (BILDER[id] ? img(id) : HERO_SPRITES[id] ?? HERO_SPRITES.magierin);
+export const heroSprite = (id) => (BILDER[id] || VARIANTEN[id] ? img(id) : HERO_SPRITES[id] ?? HERO_SPRITES.magierin);
 export const enemySprite = (id) => (BILDER[id] || VARIANTEN[id] ? img(id) : ENEMY_SPRITES[id] ?? ENEMY_SPRITES.tintenfleck);

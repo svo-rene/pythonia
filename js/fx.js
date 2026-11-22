@@ -1,7 +1,7 @@
 // Kampfeffekte: Ausfallschritt, Geschosse, Schild, Heilung, Krallenhiebe.
 // Die Effekte laufen in einer eigenen Ebene über der Seite, damit das Neuzeichnen sie nicht abbricht.
 
-const COLORS = { magierin: '#ffb03b', waechter: '#8fd0ff', orakel: '#b48bff' };
+const COLORS = { magierin: '#ffb03b', waechter: '#8fd0ff', orakel: '#b48bff', eishexe: '#9fe8ff', gaukler: '#ff7ad9' };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function layer() {

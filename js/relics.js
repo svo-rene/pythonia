@@ -21,7 +21,9 @@ export function relicView(id, { extra = '', cls = '' } = {}) {
 /** Relikte, die man noch finden kann (ohne Start-Relikte, ohne gesperrte). */
 export function relicPool() {
   const run = game.run;
-  return Object.keys(RELICS).filter((k) => !RELICS[k].start && !run.relics.includes(k)
+  const builds = !!game.meta.builds;
+  return Object.keys(RELICS).filter((k) => !RELICS[k].trait && !run.relics.includes(k)
+    && (!RELICS[k].start || builds) && (!RELICS[k].build || builds) && (!RELICS[k].advanced || game.meta.advanced)
     && (!RELICS[k].unlock || game.meta.achievements.includes(RELICS[k].unlock)));
 }
 

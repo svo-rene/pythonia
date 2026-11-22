@@ -429,3 +429,15 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
 .kr-empty { color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
 .act-done h2 { color: var(--accent2); }
 .act-intro { max-width: 560px; margin: 0 auto 8px; }
+
+/* Spielweisen */
+.stat { font-size: 12px; border-radius: 4px; padding: 1px 6px; font-weight: 700; }
+.stat.brand { background: #5a2412; color: #ffb27a; }
+.stat.schwach { background: #1d3550; color: #9fd1ff; }
+.stat.verwundbar { background: #4a1e3a; color: #ff9fd0; }
+.unlock-box { background: var(--panel); border: 2px solid var(--accent); border-radius: var(--radius); padding: 12px 18px; max-width: 760px; margin: 0 auto 18px; box-shadow: 0 0 24px rgba(255, 204, 77, 0.3); }
+.build-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; text-align: left; }
+.build { background: var(--bg2); border-radius: 10px; padding: 8px 10px; }
+.build p { margin: 4px 0 0; font-size: 0.9em; }
+.stat.frost { background: #14405a; color: #bff0ff; }
+.hero-pick.locked { opacity: 0.5; filter: grayscale(0.8); cursor: not-allowed; }

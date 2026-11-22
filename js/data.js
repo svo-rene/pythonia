@@ -548,3 +548,138 @@ export const ACTS = {
     geschenk: ['kristall', 'kristallwurf'], konzept: 'liste' },
 };
 Object.assign(FORGE_LEVEL, { stapler: 'leicht', sortierschuss: 'schwer', durchzaehlen: 'leicht', zwillinge: 'schwer' });
+
+// =====================================================================
+// SPIELWEISEN (frei nach dem ersten Sieg über Akt 1)
+// Jede Figur hat eine Grundeigenschaft (als Relikt). Die Karten jeder Spielweise kann jede Figur nutzen.
+// Neue Variablen: dornen, ziel_brand, ziel_schwach, ziel_verwundbar, gegner_brand, gegner_schwach
+// =====================================================================
+export const BUILDS = {
+  dornen: { name: 'Dornen und Block', icon: '🌵', text: 'Viel Block aufbauen. Wer dich angreift, verletzt sich an deinen Dornen.' },
+  brand: { name: 'Brand', icon: '🔥', text: 'Gegner in Brand setzen. Brand schadet jede Runde und lässt sich verdoppeln.' },
+  fluch: { name: 'Flüche', icon: '🌀', text: 'Gegner schwächen (weniger Schaden) und verwundbar machen (mehr Schaden).' },
+};
+Object.assign(HEROES.waechter, { trait: 'dornenschild', build: 'dornen' });
+Object.assign(HEROES.magierin, { trait: 'glutherz', build: 'brand' });
+Object.assign(HEROES.orakel, { trait: 'fluchsicht', build: 'fluch' });
+
+Object.assign(RELICS, {
+  // Grundeigenschaften der Figuren
+  dornenschild: { name: 'Dornenschild', icon: '🌵', hook: 'kampf_start', code: 'dornen += 2', trait: 'waechter' },
+  glutherz: { name: 'Glutherz', icon: '🌋', hook: 'karte_gespielt', code: 'if typ == "angriff":\n    ziel_brand += 1', trait: 'magierin' },
+  fluchsicht: { name: 'Fluchsicht', icon: '🌀', hook: 'karte_gespielt', code: 'if typ == "skill":\n    ziel_schwach += 1', trait: 'orakel' },
+  // findbare Relikte der Spielweisen
+  stachelring: { name: 'Stachelring', icon: '💍', hook: 'kampf_start', code: 'dornen += 1', build: true },
+  nadelkissen: { name: 'Nadelkissen', icon: '🧷', hook: 'zug_ende', code: 'if block >= 10:\n    dornen += 1', build: true },
+  zunderbuechse: { name: 'Zunderbüchse', icon: '🧨', hook: 'zug_start', code: 'ziel_brand += 1', build: true },
+  boeser_blick: { name: 'Böser Blick', icon: '🧿', hook: 'kampf_start', code: 'for i in range(len(gegner_schwach)):\n    gegner_schwach[i] += 1', build: true },
+});
+
+Object.assign(CARDS, {
+  // Dornen und Block
+  stachelpanzer: { name: 'Stachelpanzer', build: 'dornen', cost: 1, concept: 'basis', type: 'skill',
+    code: 'dornen += 2\nblock += 4', text: '+2 Dornen für den Kampf und 4 Block.',
+    up: { code: 'dornen += 3\nblock += 5', text: '+3 Dornen und 5 Block.' } },
+  schildschlag: { name: 'Schildschlag', build: 'dornen', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= block // 2', text: 'Schaden in Höhe der Hälfte deines Blocks.',
+    up: { code: 'ziel_leben -= block // 2 + 5', text: 'Halber Block plus 5 als Schaden.' } },
+  igel: { name: 'Igel', build: 'dornen', cost: 2, concept: 'if', type: 'skill', target: true,
+    code: 'block += 9\nif ziel_angriff > 0:\n    dornen += 3', text: '9 Block. Will das Ziel angreifen, +3 Dornen.',
+    up: { code: 'block += 12\nif ziel_angriff > 0:\n    dornen += 3', text: '12 Block. Will das Ziel angreifen, +3 Dornen.' } },
+  eisenhaut: { name: 'Eisenhaut', build: 'dornen', cost: 1, concept: 'basis', type: 'skill',
+    code: 'block += 3 + 2 * dornen', text: '3 Block plus 2 für jeden Dorn.',
+    up: { code: 'block += 5 + 2 * dornen', text: '5 Block plus 2 für jeden Dorn.' } },
+  // Brand
+  zunder: { name: 'Zunder', build: 'brand', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 3\nziel_brand += 3', text: '3 Schaden und 3 Brand.',
+    up: { code: 'ziel_leben -= 4\nziel_brand += 4', text: '4 Schaden und 4 Brand.' } },
+  funkenschauer: { name: 'Funkenschauer', build: 'brand', cost: 1, concept: 'for', type: 'angriff', target: true,
+    code: 'for i in range(3):\n    ziel_leben -= 1\n    ziel_brand += 1', text: 'Dreimal: 1 Schaden und 1 Brand.',
+    up: { code: 'for i in range(4):\n    ziel_leben -= 1\n    ziel_brand += 1', text: 'Viermal: 1 Schaden und 1 Brand.' } },
+  feuerring: { name: 'Feuerring', build: 'brand', cost: 1, concept: 'for', type: 'skill',
+    code: 'for i in range(len(gegner_brand)):\n    gegner_brand[i] += 3', text: 'Jeder Gegner bekommt 3 Brand.',
+    up: { code: 'for i in range(len(gegner_brand)):\n    gegner_brand[i] += 4', text: 'Jeder Gegner bekommt 4 Brand.' } },
+  glutnest: { name: 'Glutnest', build: 'brand', cost: 1, concept: 'basis', type: 'skill', target: true,
+    code: 'ziel_brand *= 2', text: 'Verdoppelt den Brand des Ziels.',
+    up: { cost: 0, text: 'Verdoppelt den Brand des Ziels. Kostet nichts.' } },
+  ausbrennen: { name: 'Ausbrennen', build: 'brand', cost: 2, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= ziel_brand * 2\nziel_brand = 0', text: 'Doppelter Brand als Schaden auf einmal. Danach ist der Brand weg.',
+    up: { code: 'ziel_leben -= ziel_brand * 3\nziel_brand = 0', text: 'Dreifacher Brand als Schaden auf einmal.' } },
+  // Flüche
+  fluchblick: { name: 'Fluchblick', build: 'fluch', cost: 1, concept: 'basis', type: 'skill', target: true,
+    code: 'ziel_schwach += 2\nblock += 4', text: 'Das Ziel ist 2 Züge schwach (−25 % Schaden). Dazu 4 Block.',
+    up: { code: 'ziel_schwach += 3\nblock += 5', text: '3 Züge schwach und 5 Block.' } },
+  blossstellen: { name: 'Bloßstellen', build: 'fluch', cost: 1, concept: 'basis', type: 'skill', target: true,
+    code: 'ziel_verwundbar += 2\nziehe(1)', text: 'Das Ziel ist 2 Züge verwundbar (+50 % Schaden). Du ziehst 1 Karte.',
+    up: { code: 'ziel_verwundbar += 3\nziehe(1)', text: '3 Züge verwundbar, 1 Karte ziehen.' } },
+  wehrlos: { name: 'Wehrlos', build: 'fluch', cost: 1, concept: 'if', type: 'angriff', target: true,
+    code: 'if ziel_verwundbar > 0:\n    ziel_leben -= 10\nelse:\n    ziel_leben -= 5', text: '10 Schaden, wenn das Ziel verwundbar ist, sonst 5.',
+    up: { code: 'if ziel_verwundbar > 0:\n    ziel_leben -= 14\nelse:\n    ziel_leben -= 6', text: '14 Schaden, wenn verwundbar, sonst 6.' } },
+  nebel: { name: 'Lähmender Nebel', build: 'fluch', cost: 2, concept: 'for', type: 'skill',
+    code: 'for i in range(len(gegner_schwach)):\n    gegner_schwach[i] += 2\nblock += 5', text: 'Alle Gegner 2 Züge schwach. Dazu 5 Block.',
+    up: { code: 'for i in range(len(gegner_schwach)):\n    gegner_schwach[i] += 3\nblock += 6', text: 'Alle Gegner 3 Züge schwach, 6 Block.' } },
+  zehrfluch: { name: 'Zehrfluch', build: 'fluch', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 2 + 3 * ziel_schwach', text: '2 Schaden plus 3 für jeden Zug, den das Ziel noch schwach ist.',
+    up: { code: 'ziel_leben -= 3 + 4 * ziel_schwach', text: '3 Schaden plus 4 pro Schwäche-Zug.' } },
+});
+
+// =====================================================================
+// NACH AKT 1: zwei weitere Spielweisen und zwei neue Figuren
+// Neue Variablen: ziel_frost, gegner_frost (ab 5 Frost erstarrt ein Gegner und setzt einen Zug aus), kombo
+// =====================================================================
+Object.assign(BUILDS, {
+  eis: { name: 'Eis', icon: '❄', advanced: true, text: 'Frost sammeln. Ab 5 Frost erstarrt ein Gegner und setzt einen ganzen Zug aus.' },
+  kombo: { name: 'Kombo', icon: '🤹', advanced: true, text: 'Viele billige Karten in einem Zug. Die Variable kombo zählt mit und macht spätere Karten stärker.' },
+});
+
+Object.assign(HEROES, {
+  eishexe: { name: 'Die Eishexe', hp: 52, advanced: true, trait: 'frosthauch', build: 'eis', relic: 'frosthauch',
+    deck: ['funke', 'funke', 'funke', 'funke', 'schutz', 'schutz', 'schutz', 'schutz', 'frostsplitter', 'eiswand'],
+    text: 'Lässt Gegner erstarren, bevor sie zuschlagen.' },
+  gaukler: { name: 'Der Gaukler', hp: 44, advanced: true, trait: 'jonglierball', build: 'kombo', relic: 'jonglierball',
+    deck: ['funke', 'funke', 'funke', 'schutz', 'schutz', 'schutz', 'wurfmesser', 'wurfmesser', 'wurfmesser', 'schwung'],
+    text: 'Spielt viele kleine Karten blitzschnell hintereinander.' },
+});
+
+Object.assign(RELICS, {
+  frosthauch: { name: 'Frosthauch', icon: '🌬', hook: 'zug_start', code: 'for i in range(len(gegner_frost)):\n    gegner_frost[i] += 1', trait: 'eishexe' },
+  jonglierball: { name: 'Jonglierball', icon: '🤹', hook: 'karte_gespielt', code: 'if kombo == 4:\n    energie += 1', trait: 'gaukler' },
+  eiszapfen: { name: 'Eiszapfen', icon: '🧊', hook: 'kampf_start', code: 'for i in range(len(gegner_frost)):\n    gegner_frost[i] += 2', build: true, advanced: true },
+  taschenuhr: { name: 'Taschenuhr', icon: '⏱', hook: 'karte_gespielt', code: 'if kombo == 6:\n    energie += 1', build: true, advanced: true },
+  schneekugel: { name: 'Schneekugel', icon: '🔮', hook: 'zug_ende', code: 'if kombo >= 5:\n    block += 6', build: true, advanced: true },
+});
+
+Object.assign(CARDS, {
+  // Eis
+  frostsplitter: { name: 'Frostsplitter', build: 'eis', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 4\nziel_frost += 2', text: '4 Schaden und 2 Frost. Ab 5 Frost erstarrt das Ziel.',
+    up: { code: 'ziel_leben -= 5\nziel_frost += 3', text: '5 Schaden und 3 Frost.' } },
+  eiswand: { name: 'Eiswand', build: 'eis', cost: 1, concept: 'basis', type: 'skill', target: true,
+    code: 'block += 5\nziel_frost += 1', text: '5 Block und 1 Frost aufs Ziel.',
+    up: { code: 'block += 7\nziel_frost += 2', text: '7 Block und 2 Frost.' } },
+  blizzard: { name: 'Blizzard', build: 'eis', cost: 2, concept: 'for', type: 'skill',
+    code: 'for i in range(len(gegner_frost)):\n    gegner_frost[i] += 3', text: 'Jeder Gegner bekommt 3 Frost.',
+    up: { code: 'for i in range(len(gegner_frost)):\n    gegner_frost[i] += 4', text: 'Jeder Gegner bekommt 4 Frost.' } },
+  kaelteschock: { name: 'Kälteschock', build: 'eis', cost: 1, concept: 'if', type: 'skill', target: true,
+    code: 'if ziel_frost >= 2:\n    ziel_frost += 3\nelse:\n    ziel_frost += 1', text: 'Hat das Ziel schon 2 Frost, kommen 3 dazu, sonst 1.',
+    up: { code: 'if ziel_frost >= 2:\n    ziel_frost += 4\nelse:\n    ziel_frost += 2', text: 'Ab 2 Frost kommen 4 dazu, sonst 2.' } },
+  eisbrecher: { name: 'Eisbrecher', build: 'eis', cost: 2, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 4 + 3 * ziel_frost\nziel_frost = 0', text: '4 Schaden plus 3 pro Frost. Danach ist der Frost weg.',
+    up: { code: 'ziel_leben -= 5 + 4 * ziel_frost\nziel_frost = 0', text: '5 Schaden plus 4 pro Frost.' } },
+  // Kombo
+  wurfmesser: { name: 'Wurfmesser', build: 'kombo', cost: 0, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 2 + kombo', text: '2 Schaden plus 1 für jede Karte, die du in diesem Zug schon gespielt hast.',
+    up: { code: 'ziel_leben -= 3 + kombo', text: '3 Schaden plus kombo.' } },
+  schwung: { name: 'Schwung', build: 'kombo', cost: 0, concept: 'basis', type: 'skill',
+    code: 'block += 2 + kombo', text: '2 Block plus kombo.',
+    up: { code: 'block += 3 + kombo', text: '3 Block plus kombo.' } },
+  jonglage: { name: 'Jonglage', build: 'kombo', cost: 1, concept: 'basis', type: 'skill',
+    code: 'ziehe(2)\nblock += kombo', text: 'Du ziehst 2 Karten. Dazu Block in Höhe von kombo.',
+    up: { code: 'ziehe(3)\nblock += kombo', text: 'Du ziehst 3 Karten, Block in Höhe von kombo.' } },
+  finale: { name: 'Großes Finale', build: 'kombo', cost: 2, concept: 'for', type: 'angriff', target: true,
+    code: 'for i in range(kombo):\n    ziel_leben -= 3', text: 'Trifft so oft, wie du in diesem Zug schon Karten gespielt hast, je 3.',
+    up: { code: 'for i in range(kombo):\n    ziel_leben -= 4', text: 'Trifft kombo-mal je 4.' } },
+  wirbel: { name: 'Klingenwirbel', build: 'kombo', cost: 1, concept: 'for', type: 'angriff',
+    code: 'for i in range(len(gegner_leben)):\n    gegner_leben[i] -= 2 + kombo', text: 'Jeder Gegner bekommt 2 plus kombo Schaden.',
+    up: { code: 'for i in range(len(gegner_leben)):\n    gegner_leben[i] -= 3 + kombo', text: 'Jeder Gegner bekommt 3 plus kombo.' } },
+});

@@ -197,3 +197,11 @@ export function tutorialAct2() {
     { sel: '.kristalle', text: 'Da ist der Kristall! <b>Kristallwurf</b> nimmt mit <code>pop()</code> den <b>letzten</b> Kristall heraus und wirft ihn. Und Vorsicht: Manche Gegner stehlen Kristalle oder drehen deine Liste um.' },
   ]);
 }
+
+export function tutorialBuilds() {
+  runTutorial('builds', [
+    { sel: '.relic-strip', text: 'Deine Figur hat eine <b>Grundeigenschaft</b>, oben links als Relikt. Tippe es an, um seinen Code zu sehen. Darauf kannst du dein Deck aufbauen.' },
+    { sel: '.side-panel.right', text: 'Manche Karten verändern neue Werte: <code>ziel_brand</code> (Schaden jede Runde), <code>ziel_schwach</code> (macht weniger Schaden), <code>ziel_verwundbar</code> (nimmt mehr Schaden). Sie erscheinen hier, sobald sie nicht 0 sind, und als Symbole am Gegner.' },
+    { sel: '.side-panel.left', text: 'Bei dir kann <code>dornen</code> dazukommen: Wer dich angreift, bekommt so viel Schaden zurück. Bau dein Deck um eine Spielweise herum, oder mische sie!' },
+  ]);
+}

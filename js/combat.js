@@ -2,7 +2,7 @@
 import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { explainCode } from './explain.js';
-import { tutorialSeen, tutorialCombat, tutorialAct2 } from './tutorial.js';
+import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds } from './tutorial.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
 import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
@@ -13,6 +13,7 @@ let C = null;          // laufender Kampf
 let onEnd = null;      // Rückruf: ({ won }) => …
 
 const HIDE_VARS = ['max_leben'];
+const STATUS_KEYS = ['dornen', 'kombo', 'ziel_brand', 'ziel_schwach', 'ziel_verwundbar', 'ziel_frost', 'gegner_brand', 'gegner_schwach', 'gegner_frost'];
 
 export function startCombat(encId, kind, done) {
   onEnd = done;
@@ -23,7 +24,7 @@ export function startCombat(encId, kind, done) {
       const e = ENEMIES[id];
       const stufe = run.stufe ?? 0;
       const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
-      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), intent: null, boss: e.boss, elite: e.elite };
+      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 }, intent: null, boss: e.boss, elite: e.elite };
     }),
     rule: null,       // Sonderregel (Boss immer, Elite ab Stufe 2)
     hpStart: run.hp,
@@ -48,6 +49,8 @@ export function startCombat(encId, kind, done) {
     C.rule = keys[Math.floor(rng() * keys.length)];
   }
   C.kristalle = [];    // Akt 2: Kristall-Liste, bleibt während des Kampfs erhalten
+  C.dornen = 0;        // Spielweisen: Dornen-Schaden an Angreifer
+  C.combo = 0;         // Karten, die in diesem Zug schon gespielt wurden
   C.relicMem = {};     // merk-Variable je Relikt, bleibt im Kampf erhalten
   C.relicLog = [];
   C.fired = {};
@@ -64,6 +67,7 @@ export function startCombat(encId, kind, done) {
   startTurn();
   if (!tutorialSeen('kampf')) setTimeout(tutorialCombat, 400);
   else if ((run.act ?? 1) >= 2 && !tutorialSeen('akt2')) setTimeout(tutorialAct2, 400);
+  else if (builds() && !tutorialSeen('builds')) setTimeout(tutorialBuilds, 400);
 }
 
 /** Ruft alle Relikte eines Zeitpunkts auf, in der Reihenfolge des Spielers. Jedes sieht die Werte nach dem vorigen. */
@@ -107,6 +111,7 @@ function cardCost(def) {
   return c;
 }
 const alive = () => C.enemies.filter((e) => e.hp > 0);
+const builds = () => !!game.meta.builds;   // Spielweisen (nach dem ersten Sieg über Akt 1)
 const speed = () => ({ schnell: 0.35, turbo: 0.02 }[game.meta.settings.tempo] ?? 1);   // turbo: nur für den Testbot
 
 function drawCards(n) {
@@ -122,6 +127,7 @@ function drawCards(n) {
 
 function startTurn() {
   C.turn++;
+  C.combo = 0;
   C.energie = 3 + (C.turn === 1 && hasSkill('fruehstart') ? 1 : 0);
   C.maxEnergie = Math.max(3, C.energie);
   if (C.turn > 1) C.block = hasTalent('frost2') ? Math.floor(C.block / 2) : 0;
@@ -164,12 +170,14 @@ const fmtVal = (v) => (Array.isArray(v) ? `[${v.join(', ')}]` : String(v));
 function updateIntents() {
   for (const e of C.enemies) {
     if (e.hp <= 0) { e.intent = null; continue; }
+    if (e.st.frost >= 5) { e.intent = { dmg: 0, summary: '❄ erstarrt: setzt diesen Zug aus' }; continue; }
     const start = enemyVars(e);
     const r = runPy(e.code, start, { trace: false });
     const v = r.vars;
     const parts = [];
-    const dmg = Math.max(0, start.leben - (v.leben ?? start.leben));
-    if (dmg > 0) parts.push(`⚔ ${dmg} Schaden`);
+    let dmg = Math.max(0, start.leben - (v.leben ?? start.leben));
+    if (dmg > 0 && e.st.schwach > 0) dmg = Math.floor(dmg * 0.75);
+    if (dmg > 0) parts.push(`⚔ ${dmg} Schaden${e.st.schwach > 0 ? ' (geschwächt)' : ''}`);
     if ((v.block ?? start.block) < start.block) parts.push('⛨ zerstört deinen Block');
     if ((v.mein_leben ?? e.hp) > e.hp) parts.push(`✚ heilt ${v.mein_leben - e.hp}`);
     for (const k of Object.keys(e.mem)) {
@@ -196,6 +204,19 @@ function baseVars() {
     gegner_leben: live.map((e) => e.hp),
     gegner_angriff: live.map((e) => e.intent?.dmg ?? 0),
     ...(game.run.act >= 2 ? { kristalle: [...C.kristalle] } : {}),
+    ...(builds() ? {
+      dornen: C.dornen,
+      ziel_brand: t ? t.st.brand : 0,
+      ziel_schwach: t ? t.st.schwach : 0,
+      ziel_verwundbar: t ? t.st.verwundbar : 0,
+      gegner_brand: live.map((e) => e.st.brand),
+      gegner_schwach: live.map((e) => e.st.schwach),
+    } : {}),
+    ...(game.meta.advanced ? {
+      ziel_frost: t ? t.st.frost : 0,
+      gegner_frost: live.map((e) => e.st.frost),
+      kombo: C.combo,
+    } : {}),
     hand: [],
   };
 }
@@ -217,6 +238,10 @@ function enemyDeltas(start, vars) {
 function metricFor(def) {
   if (def.type === 'angriff') return { key: 'schaden', frage: 'Wie viel Schaden richtet die Karte insgesamt an?' };
   if (/staerke\s*\+=/.test(def.code)) return { key: 'staerke', frage: 'Wie viel Stärke hast du danach?' };
+  if (/dornen\s*\+=/.test(def.code) && !/block/.test(def.code)) return { key: 'dornen', frage: 'Wie viele Dornen hast du danach?' };
+  if (/ziel_brand/.test(def.code)) return { key: 'brand', frage: 'Wie viel Brand hat das Ziel danach?' };
+  if (/ziel_frost\s*\+=/.test(def.code) && def.type !== 'angriff') return { key: 'frost', frage: 'Wie viel Frost hat das Ziel danach?' };
+  if (/ziel_verwundbar\s*\+=/.test(def.code)) return { key: 'verwundbar', frage: 'Wie viele Züge ist das Ziel danach verwundbar?' };
   if (/energie\s*\+=/.test(def.code)) return { key: 'energie', frage: 'Wie viel Energie hast du danach?' };
   return { key: 'block', frage: 'Wie viel Block bekommst du dazu?' };
 }
@@ -225,6 +250,8 @@ function metricValue(key, start, vars) {
   if (key === 'schaden') return enemyDeltas(start, vars).reduce((s, x) => s + Math.max(0, x.d), 0);
   if (key === 'block') return num(vars.block, start.block) - start.block;
   if (key === 'staerke') return num(vars.staerke, start.staerke);
+  if (key === 'dornen') return num(vars.dornen, start.dornen);
+  if (key === 'brand' || key === 'verwundbar' || key === 'frost') return num(vars[`ziel_${key}`], start[`ziel_${key}`]);
   return num(vars.energie, start.energie);
 }
 
@@ -316,6 +343,7 @@ async function playCard(uid, prediction = null, eingabe = null) {
   await cardFx(cardEffect(start, res), speed());
   trackStats(def, start, res.vars, mult, prediction);
   applyCardResult(start, res.vars, mult);
+  C.combo++;
   if (C.rule === 'staerke_null') C.staerke = realStaerke + num(res.vars.staerke, 0);
   fixTarget();
   runRelics('karte_gespielt', { typ: def.type ?? 'skill', kosten: cost });
@@ -377,10 +405,28 @@ function applyCardResult(start, v, mult) {
   C.energie = Math.max(0, num(v.energie, start.energie));
   C.staerke = num(v.staerke, start.staerke);
   setKristalle(v.kristalle);
+  if (builds()) {
+    C.dornen = Math.max(0, num(v.dornen, start.dornen ?? 0));
+    for (const [key, list] of [['brand', 'gegner_brand'], ['schwach', 'gegner_schwach'], ['verwundbar', null], ['frost', 'gegner_frost']]) {
+      for (const { e, d } of statusDeltas(start, v, key, list)) e.st[key] = Math.max(0, e.st[key] + d);
+    }
+  }
   for (const { e, d } of enemyDeltas(start, v)) {
-    const dd = d > 0 ? Math.ceil(d * mult) : d;
+    const dd = d > 0 ? Math.ceil(d * mult * (e.st.verwundbar > 0 ? 1.5 : 1)) : d;
     e.hp = Math.max(0, Math.min(e.maxHp, e.hp - dd));
   }
+}
+
+/** Änderung eines Status (brand, schwach, verwundbar) je lebendem Gegner: aus der Liste und aus ziel_… */
+function statusDeltas(start, v, key, listKey) {
+  const live = alive();
+  const t = C.enemies[C.target];
+  return live.map((e, i) => {
+    let d = 0;
+    if (listKey && Array.isArray(v[listKey]) && Array.isArray(start[listKey])) d += num(v[listKey][i], start[listKey][i]) - start[listKey][i];
+    if (e === t) d += num(v[`ziel_${key}`], start[`ziel_${key}`]) - start[`ziel_${key}`];
+    return { e, d };
+  });
 }
 
 /** Zeigt die Spur Schritt für Schritt: aktive Zeile, Variablen, Lebensbalken. */
@@ -416,8 +462,31 @@ async function endTurn() {
   }
   C.discard.push(...C.hand);
   C.hand = [];
+  if (builds()) {
+    const burns = [];
+    for (const e of alive()) {
+      if (e.st.brand <= 0) continue;
+      e.hp = Math.max(0, e.hp - e.st.brand);
+      burns.push(`🔥 ${esc(e.name)} brennt: −${e.st.brand}`);
+      e.st.brand--;
+    }
+    if (burns.length) {
+      C.message = burns.join(' · ');
+      render();
+      await sleep(700 * speed());
+      if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+    }
+  }
   for (const e of C.enemies) {
     if (e.hp <= 0) continue;
+    if (e.st.frost >= 5) {
+      // Eis: erstarrt, setzt diesen Zug aus
+      e.st.frost -= 5;
+      C.message = `❄ ${esc(e.name)} ist erstarrt und setzt aus!`;
+      render();
+      await sleep(600 * speed());
+      continue;
+    }
     const start = enemyVars(e);
     const res = runPy(e.code, start);
     let prev = start;
@@ -440,6 +509,10 @@ async function endTurn() {
     await sleep(250 * speed());
     if (game.run.hp <= 0) break;
   }
+  for (const e of C.enemies) {
+    e.st.schwach = Math.max(0, e.st.schwach - 1);
+    e.st.verwundbar = Math.max(0, e.st.verwundbar - 1);
+  }
   C.busy = false;
   if (checkEnd()) return;
   startTurn();
@@ -449,14 +522,19 @@ function applyEnemyResult(e, start, v) {
   const run = game.run;
   const newBlock = num(v.block, start.block);
   if (newBlock < C.block) C.block = Math.max(0, newBlock);
-  const dmg = start.leben - num(v.leben, start.leben);
+  let dmg = start.leben - num(v.leben, start.leben);
+  if (dmg > 0 && e.st.schwach > 0) dmg = Math.floor(dmg * 0.75);
   if (dmg > 0) {
     const absorbed = Math.min(C.block, dmg);
     C.block -= absorbed;
     run.hp = Math.max(0, run.hp - (dmg - absorbed));
-    C.message = `${esc(e.name)} trifft dich: ${dmg} Schaden${absorbed ? `, ${absorbed} davon geblockt` : ''}.`;
+    C.message = `${esc(e.name)} trifft dich: ${dmg} Schaden${absorbed ? `, ${absorbed} davon geblockt` : ''}${e.st.schwach > 0 ? ' (geschwächt)' : ''}.`;
   }
   e.hp = Math.max(0, Math.min(e.maxHp, num(v.mein_leben, e.hp)));
+  if (dmg > 0 && C.dornen > 0 && e.hp > 0) {
+    e.hp = Math.max(0, e.hp - C.dornen);
+    C.message += ` 🌵 Dornen: ${C.dornen} Schaden zurück!`;
+  }
   for (const k of Object.keys(e.mem)) {
     if (k === 'fluch') continue;
     if (v[k] !== undefined) e.mem[k] = v[k];
@@ -525,7 +603,11 @@ function render() {
     const hit = hitInfo(C.shown.enemies[i], hp);
     C.shown.enemies[i] = hp;
     const mem = Object.keys(e.mem).filter((k) => k !== 'fluch')
-      .map((k) => `<span class="mem">${esc(k)} = ${esc(fmtVal(e.mem[k]))}</span>`).join('');
+      .map((k) => `<span class="mem">${esc(k)} = ${esc(fmtVal(e.mem[k]))}</span>`).join('')
+      + (e.st.brand ? `<span class="stat brand" title="Brand: verliert am Ende deines Zugs so viel Leben, dann −1">🔥 ${e.st.brand}</span>` : '')
+      + (e.st.schwach ? `<span class="stat schwach" title="Schwach: macht 25 % weniger Schaden (noch ${e.st.schwach} Züge)">💧 ${e.st.schwach}</span>` : '')
+      + (e.st.frost ? `<span class="stat frost" title="Frost: ab 5 erstarrt der Gegner und setzt einen Zug aus">❄ ${e.st.frost}/5</span>` : '')
+      + (e.st.verwundbar ? `<span class="stat verwundbar" title="Verwundbar: nimmt 50 % mehr Schaden (noch ${e.st.verwundbar} Züge)">🎯 ${e.st.verwundbar}</span>` : '');
     return `<div class="fighter foe ${targeted ? 'targeted' : ''} ${dead ? 'dead' : ''} ${acting ? 'acting' : ''} ${e.boss ? 'boss' : ''} ${hit.cls}" data-target="${i}">
       <div class="over">
         ${dead ? '' : `<div class="intent">
@@ -562,6 +644,7 @@ function render() {
             <div class="energy-orb" title="Energie"><b>${energieNow}</b><small>/${C.maxEnergie}</small></div>
             <div class="badges">
               <span class="badge" title="Stärke">💪 ${staerkeNow}</span>
+              ${builds() && C.dornen ? `<span class="badge" title="Dornen: Wer dich angreift, bekommt so viel Schaden zurück">🌵 ${C.dornen}</span>` : ''}
               <span class="badge" title="Chance auf eine Eingebung pro Zug">🔮 ${Math.round(eingebungChance() * 100)} %</span>
             </div>
           </div>
@@ -648,8 +731,14 @@ function sidePanels(v) {
       right: `<div class="run-panel"><div class="panel-title">${esc(v.name)} rechnet</div>${varsView(r, v.prev ? pr : null, HIDE_VARS)}</div>`,
     };
   }
-  const [l, r] = splitVars({ ...baseVars(), hand: undefined }, isFoeKey);
-  delete l.hand;
+  // In der Ruhe-Ansicht nur Statuswerte zeigen, die gerade etwas bedeuten (nicht 0)
+  const idle = { ...baseVars() };
+  delete idle.hand;
+  for (const k of STATUS_KEYS) {
+    const val = idle[k];
+    if (val === 0 || (Array.isArray(val) && val.every((x) => x === 0))) delete idle[k];
+  }
+  const [l, r] = splitVars(idle, isFoeKey);
   const t = C.enemies[C.target];
   return {
     left: `<div class="run-panel"><div class="panel-title">Deine Werte</div>${varsView(l, null, HIDE_VARS)}</div>`,

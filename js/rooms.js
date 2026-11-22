@@ -1,5 +1,5 @@
 // Räume außerhalb des Kampfs: Schmiede, Debug-Raum, Händler, Rastplatz, Belohnung, Level-up.
-import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS } from './data.js';
+import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS, HEROES, BUILDS } from './data.js';
 import { game, save, shuffle, pick, rng, cardDef, hasTalent, makeCard, conceptUnlocked, noteBook } from './state.js';
 import { relicPool, relicView, gainRelic, offerRelic, unlockAchievement } from './relics.js';
 import { tutorialForge, tutorialDebug, tutorialShop, tutorialRest, tutorialReward } from './tutorial.js';
@@ -13,6 +13,7 @@ export function cardPool() {
   // Nur Karten, deren Konzept gelernt ist und zum aktuellen Akt passt (Kristall-Karten erst ab Akt 2)
   const act = game.run?.act ?? 1;
   return Object.keys(CARDS).filter((id) => conceptUnlocked(CARDS[id].concept) && (CARDS[id].act ?? CONCEPTS[CARDS[id].concept]?.act ?? 1) <= act
+    && (!CARDS[id].build || !BUILDS[CARDS[id].build]?.advanced || game.meta.advanced)
     && id !== 'funke' && id !== 'schutz');
 }
 
@@ -496,7 +497,10 @@ export function rewardScreen(kind, done) {
   run.gold += gold;
   if (kind === 'elite') run.elitesWon++;
   const n = kind === 'elite' && hasTalent('takt1') ? 4 : 3;
-  const choices = shuffle(cardPool()).slice(0, n);
+  // Mit Spielweisen: eine Karte passt immer zur Spielweise der eigenen Figur
+  const pool = shuffle(cardPool());
+  const own = game.meta.builds ? pool.find((id) => CARDS[id].build && CARDS[id].build === HEROES[run.hero]?.build) : null;
+  const choices = (own ? [own, ...pool.filter((id) => id !== own)] : pool).slice(0, n);
   save();
   app().innerHTML = `<div class="room reward">
     <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold}) · +${kind === 'elite' ? 25 : 10} EXP${kind === 'elite' ? ' · Danach wählst du ein Relikt.' : ''}</p>

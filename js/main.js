@@ -1,5 +1,5 @@
 // Einstieg: Titel, Karte des Akts, Talentbaum, Run-Ende, Einstellungen.
-import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS } from './data.js';
+import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS, BUILDS } from './data.js';
 import { eventRoom } from './events.js';
 import { showRelics, relicCode, relicView } from './relics.js';
 import { explainCode } from './explain.js';
@@ -130,12 +130,17 @@ function showHeroSelect() {
     const counts = {};
     for (const c of h.deck) counts[c] = (counts[c] ?? 0) + 1;
     const deck = Object.entries(counts).map(([c, n]) => `${n}× ${esc(CARDS[c].name)}`).join(', ');
+    if (h.advanced && !game.meta.advanced) {
+      return `<div class="hero-pick locked"><div class="hero-pick-fig">${heroSprite(id)}</div><b>${esc(h.name)}</b>
+        <span class="hint small">🔒 Wird frei, sobald du Akt 1 zum ersten Mal geschafft hast.</span></div>`;
+    }
     return `<button class="hero-pick" data-hero="${id}">
       <div class="hero-pick-fig">${heroSprite(id)}</div>
       <b>${esc(h.name)}</b>
       <span class="hint small">${esc(h.text)}</span>
       <span class="hero-stat">❤ ${h.hp} Leben</span>
-      <span class="hero-gabe"><b>${RELICS[h.relic].icon} Start-Relikt ${esc(RELICS[h.relic].name)}:</b><code class="relic-mini">${esc(relicCode(h.relic))}</code>${h.extra ? `<br>${esc(h.extra)}` : ''}</span>
+      <span class="hero-gabe"><b>${RELICS[h.trait].icon} Grundeigenschaft ${esc(RELICS[h.trait].name)}:</b><code class="relic-mini">${esc(relicCode(h.trait))}</code>
+        <br><small>Spielweise: ${BUILDS[h.build].icon} ${esc(BUILDS[h.build].name)}</small>${h.extra ? `<br>${esc(h.extra)}` : ''}</span>
       <span class="hero-deck">${deck}</span></button>`;
   }).join('');
   app().innerHTML = `<div class="hero-select">
@@ -257,8 +262,14 @@ function enterRoom(node) {
 function actDone() {
   const run = game.run;
   const next = ACTS[run.act + 1];
+  const newAdvanced = run.act === 1 && !game.meta.advanced;
+  if (newAdvanced) { game.meta.advanced = true; save(); }
   topbar();
   app().innerHTML = `<div class="title-screen act-done">
+    ${newAdvanced ? `<div class="unlock-box"><h2>✨ Neu freigeschaltet!</h2>
+      <p>Zwei neue Spielweisen, ihre Karten tauchen ab sofort als Belohnung auf:</p>
+      <div class="build-list">${Object.values(BUILDS).filter((b) => b.advanced).map((b) => `<div class="build"><b>${b.icon} ${esc(b.name)}</b><p>${esc(b.text)}</p></div>`).join('')}</div>
+      <p>Und zwei neue Figuren für deinen nächsten Run: ${Object.values(HEROES).filter((h) => h.advanced).map((h) => `<b>${esc(h.name)}</b>`).join(' und ')}.</p></div>` : ''}
     <img class="logo-big" src="assets/logo.svg" alt="">
     <h1>Akt ${run.act} geschafft!</h1>
     <p class="sub">Der Boss ist besiegt. Ein Gang führt tiefer hinab …</p>

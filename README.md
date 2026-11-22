@@ -21,6 +21,20 @@ py -m http.server 8765
 
 Nach dem Boss eines Akts geht es in den nächsten (volle Heilung, Geschenk-Karten). Geplant: Stapel/Warteschlangen/Dictionaries mit Komplexität (Akt 3) und Klassen (Akt 4); Natter kann beides schon. Die Akt-2-Gegner nutzen vorerst umgefärbte Figuren aus Akt 1.
 
+## Figuren und Spielweisen
+
+Jede Figur hat eine **Grundeigenschaft** (ein Relikt, also eine Python-Funktion) und eine Lieblings-Spielweise. Die Karten aller Spielweisen kann jede Figur nutzen; Belohnungen bieten immer eine Karte der eigenen Spielweise an.
+
+| Figur | Grundeigenschaft | Spielweise | frei |
+| --- | --- | --- | --- |
+| Steinwächter | Dornenschild: `dornen += 2` | 🌵 Dornen und Block | von Anfang an |
+| Funkenmagierin | Glutherz: Angriffe geben `ziel_brand += 1` | 🔥 Brand | von Anfang an |
+| Orakel | Fluchsicht: Skills geben `ziel_schwach += 1` | 🌀 Flüche (schwach, verwundbar) | von Anfang an |
+| Eishexe | Frosthauch: jede Runde +1 Frost auf alle | ❄ Eis (ab 5 Frost setzt ein Gegner aus) | nach Akt 1 |
+| Gaukler | Jonglierball: 4. Karte im Zug gibt Energie | 🤹 Kombo (`kombo` zählt die Karten im Zug) | nach Akt 1 |
+
+Statuswerte: Brand schadet am Zugende und sinkt um 1; schwach = −25 % Gegnerschaden; verwundbar = +50 % Schaden; Frost ab 5 = Zug aussetzen. Statuswerte, die 0 sind, blendet die Variablentafel aus.
+
 ## Inhalt des Prototyps
 
 - Drei Figuren mit eigenem Startdeck und eigenem Start-Relikt (Funkenmagierin, Steinwächter, Orakel)
