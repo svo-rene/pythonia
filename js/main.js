@@ -76,7 +76,7 @@ function showTitle() {
       <button class="btn secondary" data-a="saves">Spielstand</button>
     </div>
     <p class="hint small">Runs: ${m.runs} · Siege: ${m.wins} · Akte geschafft: ${m.actsDone.length} von ${Object.keys(ACTS).length}</p>
-    <p class="hint small about">Entstanden für meine Schülerinnen und Schüler am Gymnasium Dresden-Pieschen. Über Feedback und Hinweise freue ich mich sehr. – René Richter, <a href="#" data-m="richter|gdpie.lernsax.de">✉️ E-Mail</a></p></div>`;
+    <p class="hint small about">Entstanden für meine Schülerinnen und Schüler am Gymnasium Dresden-Pieschen. Über Feedback und Hinweise freue ich mich sehr. – René Richter, <a href="#" data-m="richter|gdpie.lernsax.de">✉️ E-Mail</a><br>© 2026 René Richter · Code: MIT · Inhalte: CC BY 4.0 · Python im Browser: <a href="https://github.com/wi-wissen/Natter" target="_blank" rel="noopener">Natter</a> von Julian Dorn (MIT) · <a href="https://github.com/svo-rene/pythonia/blob/main/LIZENZEN.md" target="_blank" rel="noopener">Lizenzen</a></p></div>`;
   app().querySelector('[data-a="continue"]')?.addEventListener('click', () => { enterPendingOrMap(); });
   app().querySelector('[data-a="new"]').addEventListener('click', () => {
     if (run && !confirm('Den laufenden Run abbrechen und neu beginnen?')) return;
