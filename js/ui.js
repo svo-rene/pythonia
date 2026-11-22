@@ -6,7 +6,7 @@ export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const TOKEN = /(#.*$|"[^"\n]*"|'[^'\n]*'|\b\d+\b|\b(?:if|elif|else|for|in|while|and|or|not|True|False|None)\b|\b(?:range|len|ziehe|print)\b)/g;
+const TOKEN = /(#.*$|"[^"\n]*"|'[^'\n]*'|\b\d+\b|\b(?:if|elif|else|for|in|while|and|or|not|True|False|None|def)\b|\b(?:range|len|ziehe|print|int|input)\b)/g;
 
 /** Eine Zeile Python mit einfacher Syntaxfärbung. */
 export function hl(line) {
@@ -15,7 +15,7 @@ export function hl(line) {
   for (const m of line.matchAll(TOKEN)) {
     out += esc(line.slice(last, m.index));
     const t = m[0];
-    const cls = t.startsWith('#') ? 'c' : /^["']/.test(t) ? 's' : /^\d/.test(t) ? 'n' : /^(range|len|ziehe|print)$/.test(t) ? 'f' : 'k';
+    const cls = t.startsWith('#') ? 'c' : /^["']/.test(t) ? 's' : /^\d/.test(t) ? 'n' : /^(range|len|ziehe|print|int|input)$/.test(t) ? 'f' : 'k';
     out += `<span class="py-${cls}">${esc(t)}</span>`;
     last = m.index + t.length;
   }

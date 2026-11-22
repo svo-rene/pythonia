@@ -2,6 +2,7 @@
 import { RELICS, HOOKS, ACHIEVEMENTS } from './data.js';
 import { game, save, shuffle, noteBook } from './state.js';
 import { esc, codeView, modal, toast } from './ui.js';
+import { explainCode } from './explain.js';
 
 /** Der Code eines Relikts als Python-Funktion. */
 export function relicCode(id) {
@@ -64,7 +65,7 @@ export function showRelics(onChange = () => {}) {
       Die Reihenfolge kann viel ändern: Erst <code>block += 3</code>, dann <code>block *= 2</code> gibt 6. Andersherum nur 3.</p>
       ${run.relics.length ? `<div class="relic-list">${run.relics.map((id, i) => `<div class="relic-row">
         <span class="order">${i + 1}.</span>${relicView(id)}
-        <span class="pbtns"><button data-up="${i}" title="nach oben">▲</button><button data-down="${i}" title="nach unten">▼</button></span></div>`).join('')}</div>`
+        <span class="pbtns"><button data-up="${i}" title="nach oben">▲</button><button data-down="${i}" title="nach unten">▼</button><button data-ex="${id}" title="Code erklären">❓</button></span></div>`).join('')}</div>`
         : '<p>Noch keine Relikte. Du findest sie nach Elite-Kämpfen, in ?-Räumen und beim Händler.</p>'}
       <div class="row"><button class="btn ok">Fertig</button></div>`;
     el.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => {
@@ -77,6 +78,7 @@ export function showRelics(onChange = () => {}) {
       if (i < run.relics.length - 1) [run.relics[i + 1], run.relics[i]] = [run.relics[i], run.relics[i + 1]];
       save(); draw();
     }));
+    el.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => explainCode(RELICS[b.dataset.ex].name, relicCode(b.dataset.ex))));
     el.querySelector('.ok').addEventListener('click', () => close());
   };
   draw();

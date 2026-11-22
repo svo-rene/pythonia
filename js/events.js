@@ -5,6 +5,7 @@ import { runPy } from './natter.js';
 import { app, esc, codeView, varsView, toast } from './ui.js';
 import { chooseCard, cardPool } from './rooms.js';
 import { offerRelic, unlockAchievement } from './relics.js';
+import { tutorialRiddle } from './tutorial.js';
 
 const FRAMES = [
   { icon: '👻', titel: 'Der Höhlengeist', text: 'Ein Geist schwebt aus der Wand. „Rechne mit mir, Lehrling, dann helfe ich dir.“' },
@@ -54,6 +55,7 @@ function riddleRoom(done) {
   app().querySelector('.ok').addEventListener('click', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
   app().querySelector('.leave').addEventListener('click', () => done());
+  tutorialRiddle();
 }
 
 /** Auflösung: die Spur Zeile für Zeile, damit man sieht, wo man sich verrechnet hat. */

@@ -385,3 +385,37 @@ table.trace table.vars { font-size: 12px; }
 .logo-small { width: 24px; height: 24px; }
 .logo-big { width: 120px; height: 120px; display: block; margin: 0 auto 4px; filter: drop-shadow(0 0 18px rgba(255, 204, 77, 0.35)); }
 .title-screen h1 { letter-spacing: 0.04em; background: linear-gradient(#ffe08a, #e09a2a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Code erklären */
+.ex-btn { background: none; border: 1px solid var(--line); border-radius: 50%; width: 20px; height: 20px; font-size: 11px; line-height: 1; margin-left: 6px; cursor: pointer; padding: 0; vertical-align: middle; }
+.ex-btn:hover { border-color: var(--accent); }
+table.explain { width: 100%; border-collapse: collapse; margin: 8px 0; }
+table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+.ex-code { background: var(--code-bg); font: 13px/1.5 ui-monospace, Consolas, monospace; white-space: pre; width: 1%; }
+.ex-code .ln i { display: inline-block; width: 1.6em; color: #5d5380; font-style: normal; }
+.ex-in { color: var(--muted); }
+.ex-vars { margin: 4px 0 10px; padding-left: 18px; }
+.concepts { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.concept { background: var(--panel); border-left: 3px solid var(--accent2); border-radius: 6px; padding: 6px 10px; }
+.concept p { margin: 4px 0; font-size: 0.9em; }
+.listbox { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+.lb { display: inline-flex; flex-direction: column; align-items: center; border: 1px solid var(--accent2); border-radius: 6px; padding: 2px 8px; }
+.lb small { color: var(--accent2); font-size: 0.75em; }
+/* Eingabe-Karten */
+.num-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.btn.num { min-width: 48px; font-size: 1.2em; }
+@media (max-width: 800px) { .ex-code { white-space: pre-wrap; } }
+
+/* Einführung mit Zeigefinger */
+#coach { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.coach-ring { position: fixed; border: 3px solid var(--accent); border-radius: 14px; box-shadow: 0 0 0 9999px rgba(8, 6, 14, 0.45), 0 0 22px rgba(255, 204, 77, 0.8); transition: all 0.25s ease; }
+.coach-finger { position: fixed; font-size: 40px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7)); transition: left 0.25s, top 0.25s; animation: tap 1s ease-in-out infinite; }
+.coach-finger.up { animation-name: tapup; }
+@keyframes tap { 50% { transform: translateY(8px); } }
+@keyframes tapup { 50% { transform: translateY(-8px); } }
+.coach-bubble { position: fixed; pointer-events: auto; background: #fff8e1; color: #2a1f3d; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font-size: 0.98em; line-height: 1.4; transition: left 0.25s, top 0.25s; }
+.coach-bubble code { background: #efe3c2; color: #4a2c7a; padding: 0 4px; border-radius: 4px; }
+.coach-bubble.coach-pop { animation: bubblepop 0.25s ease-out; }
+@keyframes bubblepop { from { transform: scale(0.9); opacity: 0; } }
+.coach-btns { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 8px; }
+.coach-skip { background: none; border: 0; color: #7a6a95; font-size: 0.8em; text-decoration: underline; cursor: pointer; }

@@ -63,6 +63,23 @@ export const CARDS = {
   ueberladung: { name: 'Überladung', cost: 'X', concept: 'while', type: 'angriff', target: true,
     code: 'while energie > 0:\n    energie -= 1\n    ziel_leben -= 5', text: 'Verbraucht alle Energie, 5 Schaden pro Energie.',
     up: { code: 'while energie > 0:\n    energie -= 1\n    ziel_leben -= 7', text: 'Verbraucht alle Energie, 7 Schaden pro Energie.' } },
+  // Eingabe-Karten: Die erste Zeile fragt beim Ausspielen nach einer Zahl (min bis max).
+  streustrahl: { name: 'Streustrahl', cost: 1, concept: 'for', type: 'angriff', target: true, eingabe: { var: 'treffer', min: 1, max: 4 },
+    code: 'treffer = int(input("Wie viele Treffer? (1-4)"))\nschaden = 12 // treffer + staerke\nfor i in range(treffer):\n    ziel_leben -= schaden',
+    text: 'Du wählst: wenige starke oder viele schwache Treffer. Stärke zählt bei jedem Treffer.',
+    up: { code: 'treffer = int(input("Wie viele Treffer? (1-4)"))\nschaden = 16 // treffer + staerke\nfor i in range(treffer):\n    ziel_leben -= schaden', text: 'Wie Streustrahl, aber 16 statt 12 werden aufgeteilt.' } },
+  kraftschub: { name: 'Kraftschub', cost: 0, concept: 'basis', type: 'angriff', target: true, eingabe: { var: 'einsatz', min: 0, max: 'energie' },
+    code: 'einsatz = int(input("Wie viel Energie einsetzen?"))\nenergie -= einsatz\nziel_leben -= 3 + 6 * einsatz',
+    text: 'Du wählst, wie viel Energie du hineinsteckst: 6 Schaden pro Energie, plus 3.',
+    up: { code: 'einsatz = int(input("Wie viel Energie einsetzen?"))\nenergie -= einsatz\nziel_leben -= 4 + 8 * einsatz', text: '8 Schaden pro Energie, plus 4.' } },
+  kettenschlag: { name: 'Kettenschlag', cost: 1, concept: 'for', type: 'angriff', eingabe: { var: 'ziele', min: 1, max: 'gegner' },
+    code: 'ziele = int(input("Wie viele Gegner treffen?"))\nfor i in range(ziele):\n    gegner_leben[i] -= 14 // ziele',
+    text: 'Du wählst, wie viele Gegner (von vorn in der Liste) getroffen werden. 14 Schaden werden aufgeteilt.',
+    up: { code: 'ziele = int(input("Wie viele Gegner treffen?"))\nfor i in range(ziele):\n    gegner_leben[i] -= 20 // ziele', text: '20 Schaden werden auf die gewählten Gegner aufgeteilt.' } },
+  blutpakt: { name: 'Blutpakt', cost: 0, concept: 'basis', type: 'skill', eingabe: { var: 'opfer', min: 0, max: 10 },
+    code: 'opfer = int(input("Wie viel Leben opfern? (0-10)"))\nleben -= opfer\nblock += 2 * opfer',
+    text: 'Du wählst, wie viel Leben du opferst. Jedes geopferte Leben gibt 2 Block.',
+    up: { code: 'opfer = int(input("Wie viel Leben opfern? (0-10)"))\nleben -= opfer\nblock += 3 * opfer', text: 'Jedes geopferte Leben gibt 3 Block.' } },
 };
 
 // ---------- Helden ----------

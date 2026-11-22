@@ -2,6 +2,8 @@
 import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN } from './data.js';
 import { eventRoom } from './events.js';
 import { showRelics, relicCode, relicView } from './relics.js';
+import { explainCode } from './explain.js';
+import { tutorialMap, resetTutorials } from './tutorial.js';
 import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable } from './state.js';
 import { heroSprite } from './sprites.js';
 import { loadNatter } from './natter.js';
@@ -42,9 +44,14 @@ function showDeck() {
   const skills = run.skills.map((k) => RUN_SKILLS[k].name).join(', ') || 'keine';
   const { el, close } = modal(`<h3>Dein Deck (${run.deck.length} Karten)</h3>
     <p class="hint small">Gelernte Konzepte: ${esc(conc)} · Run-Skills: ${esc(skills)}</p>
-    <div class="card-grid">${run.deck.map((c) => cardView(cardDef(c), { lesehilfe: game.meta.settings.lesehilfe })).join('')}</div>
+    <p class="hint small">Tippe eine Karte an, um dir ihren Code erklären zu lassen.</p>
+    <div class="card-grid">${run.deck.map((c, i) => cardView(cardDef(c), { lesehilfe: game.meta.settings.lesehilfe, extra: `data-ex="${i}"` })).join('')}</div>
     <div class="row"><button class="btn ok">Schließen</button></div>`, { wide: true, onClose: () => {} });
   el.querySelector('.ok').addEventListener('click', close);
+  el.querySelectorAll('[data-ex]').forEach((d) => d.addEventListener('click', () => {
+    const def = cardDef(run.deck[Number(d.dataset.ex)]);
+    explainCode(def.name, def.code);
+  }));
 }
 
 // ---------- Titel ----------
@@ -82,6 +89,8 @@ function showHowto() {
     <ul class="howto">
       <li><b>Karten sind Python.</b> Beim Ausspielen läuft der Code Zeile für Zeile. Links stehen deine Werte, rechts die der Gegner.</li>
       <li><b>Gegner zeigen ihre Absicht als Code.</b> Lies ihn, bevor du entscheidest. Er läuft mit den Werten nach deinem Zug.</li>
+      <li><b>❓ Erklären:</b> Verstehst du einen Code nicht? Tippe auf ❓ und lass ihn dir Zeile für Zeile erklären.</li>
+      <li><b>⌨ Eingabe-Karten</b> fragen beim Ausspielen nach einer Zahl, wie <code>input()</code> in Python. Du entscheidest: viele kleine Treffer oder wenige große?</li>
       <li><b>Eingebung 🔮:</b> Manchmal leuchtet eine Karte auf der Hand. Sag vorher, was sie bewirkt: Stimmt es, wirkt sie doppelt. Die Chance steigt mit deinem Level.</li>
       <li><b>Relikte 🧿</b> sind Funktionen wie <code>def zug_start():</code>. Das Spiel ruft sie selbst auf. Die Reihenfolge legst du fest, und sie zählt!</li>
       <li><b>?-Räume:</b> Code im Kopf verfolgen oder eine Entscheidung treffen. Richtig gerechnet gibt es eine Belohnung.</li>
@@ -93,8 +102,9 @@ function showHowto() {
       <li><b>Klassen-Code 🏫:</b> Gleicher Code = gleiche Höhle für alle. Nach einem Sieg wird die nächste Prüfungsstufe frei.</li>
       <li><b>Kämpfe</b> geben Gold, <b>Schmieden</b> geben EXP. Ab 50 EXP steigst du ein Level auf.</li>
       <li><b>Talentbaum:</b> Auch verlorene Runs geben Punkte.</li>
-    </ul><div class="row"><button class="btn ok">Los geht's</button></div>`, { onClose: () => {} });
+    </ul><div class="row"><button class="btn ok">Los geht's</button><button class="btn secondary tut-reset">Einführung noch einmal zeigen</button></div>`, { onClose: () => {} });
   el.querySelector('.ok').addEventListener('click', close);
+  el.querySelector('.tut-reset').addEventListener('click', () => { resetTutorials(); toast('Die Einführung startet wieder beim nächsten Kampf, in der Schmiede usw.', 'good'); close(); });
 }
 
 function showSaves() {
@@ -207,6 +217,7 @@ function showMap() {
   // zur aktuellen Ebene scrollen
   const target = app().querySelector('.mnode.open') ?? app().querySelector('.mnode.here');
   target?.scrollIntoView({ block: 'center' });
+  if (!run.pos) tutorialMap();
 }
 
 function enterPendingOrMap() {

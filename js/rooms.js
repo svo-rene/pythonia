@@ -2,6 +2,7 @@
 import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS } from './data.js';
 import { game, save, shuffle, pick, rng, cardDef, hasTalent, makeCard, conceptUnlocked, noteBook } from './state.js';
 import { relicPool, relicView, gainRelic, offerRelic, unlockAchievement } from './relics.js';
+import { tutorialForge, tutorialDebug, tutorialShop, tutorialRest, tutorialReward } from './tutorial.js';
 import { runTests, checkCode, runPy } from './natter.js';
 import { app, esc, codeView, toast, modal, cardView } from './ui.js';
 
@@ -182,6 +183,7 @@ export function forgeRoom(key, done) {
     });
   };
   render();
+  tutorialForge(st.mode);
 }
 
 function parsonsView(st) {
@@ -318,6 +320,7 @@ export function debugRoom(done) {
     });
   };
   render();
+  tutorialDebug();
 }
 
 // ---------- Händler ----------
@@ -383,6 +386,7 @@ export function shopRoom(done) {
     el.querySelector('.leave').addEventListener('click', () => done());
   };
   render();
+  tutorialShop();
 }
 
 /** Ein Konzept wird erst nach einer kurzen Nachverfolgungsaufgabe freigeschaltet; bezahlt wird nur bei Erfolg. */
@@ -469,6 +473,7 @@ export function restRoom(done) {
     if (!upgradable.length) return;
     chooseCard('Welche Karte verbessern? Links vorher, rechts nachher.', upgradable, (card) => { card.up = true; done(); }, { showUp: true });
   });
+  tutorialRest();
 }
 
 // ---------- Belohnung nach dem Kampf ----------
@@ -492,4 +497,5 @@ export function rewardScreen(kind, done) {
     next();
   }));
   app().querySelector('.skip').addEventListener('click', () => next());
+  tutorialReward();
 }

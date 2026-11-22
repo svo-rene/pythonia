@@ -1,6 +1,8 @@
 // Kartenkampf: Karten sind Python, Gegnerabsichten sind Python, beides läuft sichtbar Zeile für Zeile.
 import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
+import { explainCode } from './explain.js';
+import { tutorialSeen, tutorialCombat } from './tutorial.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
 import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
@@ -53,6 +55,7 @@ export function startCombat(encId, kind, done) {
   if (hasTalent('frost1')) C.block += 4;
   runRelics('kampf_start');
   startTurn();
+  if (!tutorialSeen('kampf')) setTimeout(tutorialCombat, 400);
 }
 
 /** Ruft alle Relikte eines Zeitpunkts auf, in der Reihenfolge des Spielers. Jedes sieht die Werte nach dem vorigen. */
@@ -213,12 +216,43 @@ function metricValue(key, start, vars) {
   return num(vars.energie, start.energie);
 }
 
-async function playCard(uid, prediction = null) {
+/** Eingabe-Karten: Die input()-Zeile wird vor dem Lauf durch die gewählte Zahl ersetzt. */
+const INPUT_LINE = /^(\s*)(\w+) = int\(input\(.*\)\)\s*$/m;
+function withInput(code, value) {
+  return code.replace(INPUT_LINE, (_, ind, name) => `${ind}${name} = ${value}`);
+}
+
+function inputRange(def) {
+  const e = def.eingabe;
+  const max = e.max === 'energie' ? C.energie - cardCost(def) : e.max === 'gegner' ? alive().length : e.max;
+  return { min: e.min, max: Math.max(e.min, max) };
+}
+
+/** Fragt die Zahl für eine Eingabe-Karte ab. */
+function askInput(uid, then) {
+  const def = cardDef(cardByUid(uid));
+  const { min, max } = inputRange(def);
+  const frage = def.code.match(/input\("([^"]*)"\)/)?.[1] ?? 'Welche Zahl?';
+  const nums = [];
+  for (let n = min; n <= max; n++) nums.push(n);
+  const { el, close } = modal(`
+    <h3>⌨ ${esc(def.name)}</h3>
+    ${codeView(def.code, { active: 1 })}
+    <p><b>${esc(frage)}</b> <span class="hint small">(${min} bis ${max})</span></p>
+    <div class="num-buttons">${nums.map((n) => `<button class="btn num" data-n="${n}">${n}</button>`).join('')}</div>
+    <p class="hint small">Deine Zahl landet in der Variable <code>${esc(def.eingabe.var)}</code>. Danach läuft der Rest des Codes.</p>
+    <div class="row"><button class="btn secondary cancel">Abbrechen</button></div>`, { onClose: () => {} });
+  el.querySelectorAll('[data-n]').forEach((b) => b.addEventListener('click', () => { close(); then(Number(b.dataset.n)); }));
+  el.querySelector('.cancel').addEventListener('click', close);
+}
+
+async function playCard(uid, prediction = null, eingabe = null) {
   if (C.busy) return;
   const card = cardByUid(uid);
   const def = cardDef(card);
   const cost = cardCost(def);
   if (cost > C.energie) { toast('Nicht genug Energie.', 'bad'); return; }
+  if (def.eingabe && eingabe === null) { askInput(uid, (v) => playCard(uid, prediction, v)); return; }
   fixTarget();
   C.busy = true;
   C.selected = null;
@@ -230,7 +264,8 @@ async function playCard(uid, prediction = null) {
   const realStaerke = C.staerke;
   if (C.rule === 'staerke_null') start.staerke = 0;
   let drawn = 0;
-  const res = runPy(def.code, start, { natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
+  const runCode = def.eingabe ? withInput(def.code, eingabe) : def.code;
+  const res = runPy(runCode, start, { natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
 
   // Vorhersage auswerten, bevor die Animation läuft
   let mult = 1;
@@ -474,7 +509,7 @@ function render() {
     return `<div class="fighter foe ${targeted ? 'targeted' : ''} ${dead ? 'dead' : ''} ${acting ? 'acting' : ''} ${e.boss ? 'boss' : ''} ${hit.cls}" data-target="${i}">
       <div class="over">
         ${dead ? '' : `<div class="intent">
-          <div class="intent-label">Absicht${lese && e.intent ? ` · <span class="intent-sum">${esc(e.intent.summary)}</span>` : ''}</div>
+          <div class="intent-label">Absicht${lese && e.intent ? ` · <span class="intent-sum">${esc(e.intent.summary)}</span>` : ''}<button class="ex-btn" data-explain="${i}" title="Code erklären">❓</button></div>
           ${codeView(e.code, { small: true, active: acting ? v.line : null })}</div>`}
         <div class="bar"><div class="fill hp" style="width:${(100 * hp) / e.maxHp}%"></div><span>${hp} / ${e.maxHp}</span></div>
         ${mem ? `<div class="badges">${mem}</div>` : ''}
@@ -545,7 +580,20 @@ function render() {
   app().querySelector('.end-turn')?.addEventListener('click', () => endTurn());
   app().querySelectorAll('.ricon').forEach((b) => b.addEventListener('click', () => showRelics(render)));
   app().querySelector('.play')?.addEventListener('click', () => playCard(C.selected));
-  app().querySelector('.predict')?.addEventListener('click', () => askPrediction(C.selected));
+  app().querySelector('.predict')?.addEventListener('click', () => {
+    const uid = C.selected;
+    if (cardDef(cardByUid(uid)).eingabe) askInput(uid, (v) => askPrediction(uid, v));
+    else askPrediction(uid);
+  });
+  app().querySelector('.explain')?.addEventListener('click', () => {
+    const def = cardDef(cardByUid(C.selected));
+    explainCode(def.name, def.code, { ...baseVars(), hand: C.hand.filter((u) => u !== C.selected).map((u) => cardDef(cardByUid(u)).name) });
+  });
+  app().querySelectorAll('[data-explain]').forEach((b) => b.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const e = C.enemies[Number(b.dataset.explain)];
+    explainCode(e.name, e.code, enemyVars(e));
+  }));
 }
 
 // Variablen der Gegnerseite: Sie stehen rechts neben den Gegnern, alles andere links neben dem Helden.
@@ -596,18 +644,20 @@ function selectedBar() {
   const can = cost <= C.energie;
   const m = metricFor(def);
   return `<div class="sel-bar"><b>${esc(def.name)}</b>
-    <button class="btn play" ${can ? '' : 'disabled'}>Ausspielen</button>
+    <button class="btn play" ${can ? '' : 'disabled'}>Ausspielen${def.eingabe ? ' ⌨' : ''}</button>
     ${C.inspired === C.selected ? `<button class="btn predict" ${can ? '' : 'disabled'}>🔮 Vorhersagen</button>` : ''}
-    <span class="hint small">${!can ? 'Zu wenig Energie.' : C.inspired === C.selected ? `Eingebung: ${esc(m.frage)} Richtig = ×2.` : ''}</span></div>`;
+    <button class="btn secondary explain" title="Code Zeile für Zeile erklären">❓ Erklären</button>
+    <span class="hint small">${!can ? 'Zu wenig Energie.' : C.inspired === C.selected ? `Eingebung: ${esc(m.frage)} Richtig = ×2.` : def.eingabe ? 'Beim Ausspielen tippst du eine Zahl ein.' : ''}</span></div>`;
 }
 
-function askPrediction(uid) {
+function askPrediction(uid, eingabe = null) {
   const def = cardDef(cardByUid(uid));
   const m = metricFor(def);
   const t = C.enemies[C.target];
   const { el, close } = modal(`
     <h3>🔮 Vorhersage: ${esc(def.name)}</h3>
     ${codeView(def.code)}
+    ${eingabe !== null ? `<p>Deine Eingabe: <code>${esc(def.eingabe.var)} = ${eingabe}</code></p>` : ''}
     <p>${esc(m.frage)}</p>
     <p class="hint small">Ziel: ${esc(t?.name ?? '–')} · Stärke ${C.staerke} · Block ${C.block} · Energie nach dem Bezahlen ${C.energie - cardCost(def)}</p>
     <input type="number" class="pred-input" autofocus>
@@ -619,7 +669,7 @@ function askPrediction(uid) {
     if (input.value === '') return;
     C.inspired = null;
     close();
-    playCard(uid, { value: input.value });
+    playCard(uid, { value: input.value }, eingabe);
   };
   el.querySelector('.ok').addEventListener('click', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });

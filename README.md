@@ -26,7 +26,10 @@ py -m http.server 8765
 - **Klassen-Code:** Gleicher Code = gleiche Höhle und gleiche Angebote, Tages-Code per Knopf
 - **Prüfungsstufen 1–5** (wie Ascension), frei nach jedem Sieg; Boss-Regeln wie die Boss-Blinds in Balatro
 - **Rückblick** am Ende eines Runs: stärkster Zauber, fleißigstes Relikt, Kommentar des Meisters
-- 12 Karten, 6 Gegner, 1 Boss, 2 Bug-Karten, 4 Schmieden, 4 Evolutionen
+- **Einführung mit Zeigefinger** beim ersten Mal: Karte, erster Kampf Schritt für Schritt, Schmiede, Debug-Raum, Rätsel, Händler, Rastplatz, Belohnung (zurücksetzbar unter „So funktioniert's“)
+- **Code erklären ❓** an Karten, Gegnerabsichten, im Deck und bei Relikten: jede Zeile in Worten, eigene und Spielvariablen mit aktuellen Werten, Begriffe wie Liste, Index, range, // mit Beispielen
+- **Eingabe-Karten** (Streustrahl, Kraftschub, Kettenschlag, Blutpakt): Die erste Zeile ist `x = int(input(...))`, beim Ausspielen wählt man die Zahl
+- 16 Karten, 6 Gegner, 1 Boss, 2 Bug-Karten, 4 Schmieden, 4 Evolutionen
 - Händler mit den Konzepten `elif`, `for`, `while`, Karten, einem Relikt und Kartenentfernen
 - Level-ups, Run-Skills, Talentbaum mit 10 Knoten
 - Speichern im Browser, Spielstand-Code zum Mitnehmen
@@ -41,6 +44,8 @@ py -m http.server 8765
 | `js/rooms.js` | Schmiede, Debug-Raum, Händler, Rastplatz (mit Evolutionen), Belohnung, Level-up |
 | `js/events.js` | ?-Räume: Code-Rätsel und Entscheidungen |
 | `js/relics.js` | Relikte: Anzeige, Auswahl, Reihenfolge, Erfolge |
+| `js/explain.js` | Code erklären: Zeilen in Worten, Variablen, Begriffe |
+| `js/tutorial.js` | Einführung mit Zeigefinger |
 | `js/main.js` | Titel, Heldenauswahl (Klassen-Code, Stufe), Karte, Zauberbuch, Talentbaum, Run-Ende mit Rückblick |
 | `js/state.js` | Spielstand, Zufall, Erzeugung der Höhlenkarte |
 | `js/sprites.js` | Figuren als SVG-Zeichnungen, Platz für eigene Bilder |
