@@ -20,7 +20,7 @@ py -m http.server 8765
 | --- | --- | --- | --- |
 | Akt 1 · Höhle der Verzweigungen | Variablen, if/elif, for, while | fertig | 🎲 Würfelkasino (Zufall), ⚖ Blutarena (Waage) |
 | Akt 2 · Listengruben | Listen, Sortieren, Komplexität (Rechenzeit ⏱) | fertig | 🐺 Rudelwald (Beschwörer), 📚 Bibliothek (Archivar) |
-| Akt 3 · Spiegelturm | Funktionen, return, Rekursion | geplant | |
+| Akt 3 · Spiegelturm | Funktionen, return, Rekursion (Spiegelschleime teilen sich; Fibonacci-Rabe; Schmieden Erste Funktion, Countdown, Summenturm, Der Größte) | fertig | |
 | Akt 4 · Klassenfestung | Klassen, Objekte, Vererbung | geplant | |
 
 Ein geschaffter Akt öffnet den nächsten; man kann jeden offenen Akt direkt starten (mit Ausgleich: Karten, Gold, Leben, Level). Freie Welten sind kürzer (6 Ebenen + Boss), alle Figuren und Karten sind erlaubt, ihr Kartenset wird in den Belohnungen bevorzugt.
@@ -119,7 +119,7 @@ Der Ordner `tools/` (die 3D-Modelle sind zusammen über 400 MB groß) wird für 
 
 ```js
 const b = await import('/tools/spielbot.js');
-await b.start('gut', 'magierin');   // oder 'schlecht', Figur: magierin, waechter, orakel
+await b.start('gut', 'magierin');   // 'gut' (≈ 7–8/10), 'schwach' (≈ 3/10, liest Code unsicher) oder 'schlecht' (zufällig)
 BOT.fights; BOT.log; BOT.summary;
 ```
 

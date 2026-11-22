@@ -7,6 +7,12 @@ import { runPy } from '../js/natter.js';
 import { _debugCombat } from '../js/combat.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Spielstärke: gut ≈ 7–8 von 10, schwach ≈ 3 von 10 (liest Code unsicher), schlecht = rein zufällig
+const SKILL = { gut: 0.75, schwach: 0.3 };
+const sk = () => SKILL[B.mode] ?? 0;
+const smart = () => B.mode in SKILL;
+const chance = (p) => Math.random() < p;
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const rand = (a) => a[Math.floor(Math.random() * a.length)];
@@ -67,25 +73,31 @@ async function combatTurn() {
   const hand = [...C.hand];
   const affordable = hand.filter((u) => dbg.cardCost(dbg.cardDef(dbg.cardByUid(u))) <= C.energie && (C.zeit === undefined || dbg.estimateSteps(u) <= C.zeit));
   if (!B.fight) return;
-  if (B.mode === 'gut') {
-    // Ziel: das Lebewesen mit dem wenigsten Leben
-    const live = C.enemies.map((e, i) => ({ e, i })).filter((x) => x.e.hp > 0).sort((a, b) => a.e.hp - b.e.hp);
-    if (live.length && C.target !== live[0].i) { $(`.foe[data-target="${live[0].i}"]`)?.click(); await sleep(30); }
+  if (smart()) {
+    const k = sk();
+    // Ziel: meist der schwächste Gegner, ein unsicherer Spieler wählt öfter irgendeinen
+    const live = C.enemies.map((e, i) => ({ e, i })).filter((x) => x.e.hp > 0 && !x.e.gespalten).sort((a, b) => a.e.hp - b.e.hp);
+    const tgt = live.length ? (chance(0.5 + k / 2) ? live[0] : rand(live)) : null;
+    if (tgt && C.target !== tgt.i) { $(`.foe[data-target="${tgt.i}"]`)?.click(); await sleep(30); }
     let best = null;
     for (const uid of affordable) {
       const def = dbg.cardDef(dbg.cardByUid(uid));
       const values = def.eingabe ? (() => { const r = dbg.inputRange(def); const a = []; for (let n = r.min; n <= r.max; n++) a.push(n); return a; })() : [null];
       for (const val of values) {
         const sim = simulate(dbg, uid, val);
-        const s = score(dbg, sim) - (dbg.cardCost(def) === 0 ? 0 : 0.5);
+        let s = score(dbg, sim) - (dbg.cardCost(def) === 0 ? 0 : 0.5);
+        // Code falsch gelesen: Die Wirkung wird deutlich über- oder unterschätzt
+        if (chance((1 - k) * 0.35)) s *= 0.3 + Math.random() * 1.4;
+        s += gauss() * (1 - k) * 6;
         if (!best || s > best.s) best = { uid, val, s, sim };
       }
     }
     if (!best || best.s <= 0.5) { B.fight.endTurns++; $('.end-turn').click(); return; }
-    await playCard(dbg, best.uid, best.val, C.inspired === best.uid ? best.sim : null);
+    const predict = C.inspired === best.uid && chance(0.4 + k * 0.6) ? best.sim : null;
+    await playCard(dbg, best.uid, best.val, predict);
   } else {
     if (!affordable.length || Math.random() < 0.18) { B.fight.endTurns++; $('.end-turn').click(); return; }
-    const live = C.enemies.map((e, i) => ({ e, i })).filter((x) => x.e.hp > 0);
+    const live = C.enemies.map((e, i) => ({ e, i })).filter((x) => x.e.hp > 0 && !x.e.gespalten);
     if (live.length > 1) { $(`.foe[data-target="${rand(live).i}"]`)?.click(); await sleep(30); }
     const uid = rand(affordable);
     const def = dbg.cardDef(dbg.cardByUid(uid));
@@ -103,7 +115,11 @@ async function playCard(dbg, uid, val, predictSim) {
   B.fight.cards.push(def.name + (val !== null ? `(${val})` : ''));
   if (predictSim && $('.sel-bar .predict')) {
     if (predictSim === 'raten') B.predValue = Math.floor(Math.random() * 15);
-    else B.predValue = dbg.metricValue(dbg.metricFor(def).key, predictSim.start, predictSim.res.vars);
+    else {
+      const right = dbg.metricValue(dbg.metricFor(def).key, predictSim.start, predictSim.res.vars);
+      // Richtig vorhergesagt: gut meistens, schwach seltener (verrechnet sich um 1 bis 3)
+      B.predValue = chance(sk() + 0.15) ? right : right + rand([-3, -2, -1, 1, 2, 3]);
+    }
     B.fight.predictions++;
     $('.sel-bar .predict').click();
   } else {
@@ -118,7 +134,7 @@ async function handleModal(m) {
     const code = codeOf(m.querySelector('pre'));
     const name = txt.match(/Welchen Wert hat (\w+)/)?.[1];
     const right = runPy(code, {}, { trace: false }).vars[name];
-    const wrongFirst = B.mode === 'schlecht' && !m.dataset.tried;
+    const wrongFirst = !m.dataset.tried && (B.mode === 'schlecht' || !chance(0.4 + sk() * 0.7));
     m.dataset.tried = '1';
     m.querySelector('.quiz-input').value = String(wrongFirst ? right + 1 : right);
     log('konzept', `Konzept-Quiz ${wrongFirst ? 'falsch' : 'richtig'} beantwortet`);
@@ -139,7 +155,7 @@ async function handleModal(m) {
   }
   if (m.querySelector('[data-r]')) {
     const opts = [...m.querySelectorAll('[data-r]')];
-    const pick = B.mode === 'gut' ? opts[0] : rand(opts);
+    const pick = chance(sk()) ? opts[0] : rand(opts);
     log('relikt', `Relikt gewählt: ${pick.querySelector('b')?.innerText}`);
     pick.click();
     return;
@@ -149,7 +165,7 @@ async function handleModal(m) {
     const cards = [...m.querySelectorAll('[data-i]')];
     const names = cards.map((c) => c.querySelector('.name')?.innerText ?? '');
     let i = 0;
-    if (B.mode === 'gut') {
+    if (chance(sk() + 0.1)) {
       if (/weg\?/.test(txt)) { i = names.findIndex((n) => /Zaunpfahl|Ewige|Funke$/.test(n)); if (i < 0) i = names.findIndex((n) => n === 'Schutz'); }
       else { i = names.findIndex((n) => /Salve|Kettenblitz|Streustrahl|Kristallwurf|Funke/.test(n)); }
       if (i < 0) i = 0;
@@ -161,7 +177,7 @@ async function handleModal(m) {
   if (m.querySelector('[data-c]')) {
     // Level-up
     const choices = [...m.querySelectorAll('[data-c]')];
-    const pick = B.mode === 'gut' ? (choices.find((c) => c.dataset.c === 'skill') ?? choices.find((c) => c.dataset.c === 'card') ?? choices[0]) : rand(choices);
+    const pick = chance(sk()) ? (choices.find((c) => c.dataset.c === 'skill') ?? choices.find((c) => c.dataset.c === 'card') ?? choices[0]) : rand(choices);
     log('levelup', `Level-up: ${pick.querySelector('.choice-title')?.innerText}`);
     pick.click();
     return;
@@ -182,19 +198,32 @@ async function forge() {
   if (!f) { log('auffaellig', `Schmiede nicht erkannt: ${title}`); $('.forge .leave')?.click(); return; }
   const st = (B.done[`forge-${B.roomId}`] ??= { tries: 0 });
   st.tries++;
-  if (st.tries > 6) { log('auffaellig', `Schmiede ${title}: zu viele Versuche, verlasse`); window.confirm = () => true; $('.forge .leave').click(); return; }
-  const editor = $('.forge .editor');
-  if (B.mode === 'schlecht' && st.tries >= 3) { log('schmiede', `${title} aufgegeben`); window.confirm = () => true; $('.forge .leave').click(); return; }
+  window.confirm = () => true;
+  if (st.tries > 6) { log('schmiede', `${title} nach ${st.tries - 1} Versuchen aufgegeben`); $('.forge .leave').click(); return; }
+  if (B.mode === 'schlecht' && st.tries >= 3) { log('schmiede', `${title} aufgegeben`); $('.forge .leave').click(); return; }
+  const k = sk();
+  let editor = $('.forge .editor');
+  // Freies Schreiben zu schwer? Ein unsicherer Spieler wechselt zum Zeilen-Ordnen
+  if (editor && smart() && st.tries >= 3 && $('.forge .to-parsons')) { $('.forge .to-parsons').click(); await sleep(50); log('schmiede', `${title}: wechselt zum Zeilen-Ordnen`); editor = null; }
+  // Nach Fehlversuchen manchmal einen Hinweis holen
+  if (smart() && st.tries >= 2 && chance(1 - k) && $('.forge .hint-exp')) { $('.forge .hint-exp').click(); await sleep(30); st.hint = (st.hint ?? 0) + 1; }
+  const p = B.mode === 'schlecht' ? 0 : Math.min(0.97, (editor ? k - 0.1 : k) + 0.18 * (st.tries - 1) + 0.15 * (st.hint ?? 0));
+  const right = chance(p);
   if (editor) {
-    editor.value = B.mode === 'gut' ? (f.loesung ?? f.zeilen.join('\n')) : (f.falsch?.[0] ?? 'pass');
+    const sol = f.loesung ?? f.zeilen.join('\n');
+    const lines = sol.split('\n');
+    editor.value = right ? sol : (f.falsch?.[0] && chance(0.5) ? [...lines.slice(0, -1), f.falsch[0]].join('\n') : lines.slice(0, -1).join('\n'));
     editor.dispatchEvent(new Event('input'));
   } else {
-    // Zeilen ordnen
     while ($('.forge [data-out]')) { $('.forge [data-out]').click(); await sleep(20); }
-    const want = B.mode === 'gut' ? f.zeilen : [...f.zeilen].reverse();
+    let want = [...f.zeilen];
+    if (!right) {
+      if (f.falsch?.length && chance(0.5)) want[want.length - 1] = f.falsch[0];
+      else if (want.length > 1) { const i = Math.floor(Math.random() * (want.length - 1)); [want[i], want[i + 1]] = [want[i + 1], want[i]]; }
+    }
     for (const line of want) {
       const pool = $$('.forge [data-pool]');
-      const el = pool.find((p) => codeOf(p.querySelector('pre')) === line) ?? pool.find((p) => codeOf(p.querySelector('pre')).trim() === line.trim());
+      const el = pool.find((q) => codeOf(q.querySelector('pre')) === line) ?? pool.find((q) => codeOf(q.querySelector('pre')).trim() === line.trim());
       if (!el) { log('auffaellig', `Schmiede ${title}: Zeile nicht gefunden: ${line}`); break; }
       el.click();
       await sleep(20);
@@ -202,20 +231,20 @@ async function forge() {
   }
   if ($('.forge .check')?.disabled) return;
   $('.forge .check').click();
-  log('schmiede', `${title} (${key}) Versuch ${st.tries}: ${editor ? 'frei' : 'Zeilen'}`);
+  log('schmiede', `${title} (${key}) Versuch ${st.tries}: ${editor ? 'frei' : 'Zeilen'}, ${right ? 'richtig' : 'falsch'}`);
 }
 
 async function debugRoom() {
   const name = $('.debug h2')?.innerText.replace(/^🐞 Debug-Raum: /, '').trim();
   const bug = Object.values(BUGS).find((b) => b.name === name);
-  if (B.mode === 'schlecht' || !bug) { log('debug', `${name}: später reparieren`); $('.debug .leave').click(); return; }
   const st = (B.done[`debug-${B.roomId}`] ??= { tries: 0 });
-  if (++st.tries > 3) { $('.debug .leave').click(); return; }
+  if (B.mode === 'schlecht' || !bug || ++st.tries > 3) { log('debug', `${name}: später reparieren`); $('.debug .leave').click(); return; }
+  const right = chance(sk() + 0.1 + 0.2 * (st.tries - 1));
   const ed = $('.debug .editor');
-  ed.value = bug.loesung;
+  ed.value = right ? bug.loesung : bug.code;
   ed.dispatchEvent(new Event('input'));
   $('.debug .check').click();
-  log('debug', `${name} repariert (Versuch ${st.tries})`);
+  log('debug', `${name}: Versuch ${st.tries} ${right ? 'repariert' : 'falsch'}`);
 }
 
 async function shop() {
@@ -223,7 +252,7 @@ async function shop() {
   st.steps++;
   const run = game.run;
   if (st.steps > 8) { $('.shop .leave').click(); return; }
-  if (B.mode === 'gut') {
+  if (B.mode === 'gut' || (B.mode === 'schwach' && chance(0.5))) {
     const concept = $$('.shop [data-concept]').find((b) => !b.disabled);
     if (concept && !st.concept) { st.concept = true; log('haendler', `Konzept kaufen: ${concept.closest('.offer').querySelector('b').innerText}`); concept.click(); return; }
     const relic = $('.shop .buy-relic:not([disabled])');
@@ -246,7 +275,7 @@ function rest() {
   const up = $('.rest [data-c="up"]:not(.disabled)');
   let pick;
   if (B.mode === 'schlecht') pick = $('.rest [data-c="heal"]');
-  else if (run.hp < run.maxHp * 0.6) pick = $('.rest [data-c="heal"]');
+  else if (run.hp < run.maxHp * (B.mode === 'schwach' ? 0.75 : 0.6)) pick = $('.rest [data-c="heal"]');
   else pick = evo ?? up ?? $('.rest [data-c="heal"]');
   log('rast', `Rastplatz: ${pick.querySelector('.choice-title').innerText}`);
   pick.click();
@@ -255,15 +284,16 @@ function rest() {
 function reward() {
   const cards = $$('.reward [data-id]');
   const run = game.run;
-  if (B.mode === 'gut') {
+  if (B.mode === 'gut' || (B.mode === 'schwach' && chance(0.4))) {
     const pref = ['salve', 'kettenblitz', 'streustrahl', 'kristallwurf', 'kristall', 'abwaegen', 'konter', 'wut', 'hinrichtung', 'ordnen', 'spitzenstein', 'kraftschub', 'kristallregen', 'schildwall', 'scheibe', 'doppelschlag', 'ueberladung', 'kettenschlag', 'aufladen', 'blutpakt'];
     const sorted = cards.sort((a, b) => pref.indexOf(a.dataset.id) - pref.indexOf(b.dataset.id));
     if (run.deck.length > 18 || !sorted.length) { log('belohnung', 'übersprungen'); $('.reward .skip').click(); return; }
     log('belohnung', `Karte: ${CARDS[sorted[0].dataset.id].name}`);
     sorted[0].click();
   } else {
-    log('belohnung', `Karte: ${CARDS[cards[0].dataset.id].name}`);
-    cards[0].click();
+    const c = B.mode === 'schwach' ? rand(cards) : cards[0];
+    log('belohnung', `Karte: ${CARDS[c.dataset.id].name}`);
+    c.click();
   }
 }
 
@@ -272,16 +302,17 @@ function event() {
     const code = codeOf($('.event-box pre'));
     const name = $('.event-box p b code').innerText;
     const right = runPy(code, {}, { trace: false }).vars[name];
-    const val = B.mode === 'gut' ? right : right + 2;
+    const ok = smart() && chance(B.mode === 'gut' ? 0.85 : 0.4);
+    const val = ok ? right : right + rand([-2, -1, 1, 2]);
     $('.riddle-input').value = String(val);
-    log('raetsel', `Rätsel (${name}): ${B.mode === 'gut' ? 'richtig' : 'falsch'}`);
+    log('raetsel', `Rätsel (${name}): ${ok ? 'richtig' : 'falsch'}`);
     $('.event-box .ok').click();
     return;
   }
-  if ($('.event [data-c="relic"]')) { (B.mode === 'gut' ? $('.event [data-c="relic"]') : $('.event [data-c="gold"]')).click(); return; }
+  if ($('.event [data-c="relic"]')) { (chance(sk()) ? $('.event [data-c="relic"]') : $('.event [data-c="gold"]')).click(); return; }
   const opts = $$('.event [data-o]').filter((o) => !o.classList.contains('disabled'));
   if (opts.length) {
-    const pick = B.mode === 'gut' ? (opts.find((o) => /verfüttern|Opfern|Trinken/.test(o.innerText) && game.run.hp > 25) ?? opts[0]) : rand(opts);
+    const pick = chance(sk()) ? (opts.find((o) => /verfüttern|Opfern|Trinken/.test(o.innerText) && game.run.hp > 25) ?? opts[0]) : rand(opts);
     log('ereignis', `${$('.event h2').innerText}: ${pick.querySelector('.choice-title').innerText}`);
     pick.click();
     return;
@@ -296,7 +327,12 @@ function mapStep() {
   if (!open.length) { log('auffaellig', 'Karte ohne offenen Raum'); return; }
   const typ = (b) => ['kampf', 'elite', 'schmiede', 'debug', 'haendler', 'rast', 'raetsel', 'boss'].find((t) => b.classList.contains(t));
   let pick;
-  if (B.mode === 'gut') {
+  if (B.mode === 'schwach') {
+    // vorsichtig, wenig Planung: meidet Eliten meistens, sonst eher zufällig
+    const hp = run.hp / run.maxHp;
+    const safe = open.filter((b) => typ(b) !== 'elite' || hp > 0.85);
+    pick = hp < 0.4 && safe.find((b) => typ(b) === 'rast') ? safe.find((b) => typ(b) === 'rast') : rand(safe.length ? safe : open);
+  } else if (B.mode === 'gut') {
     const hp = run.hp / run.maxHp;
     const order = hp < 0.45 ? ['rast', 'raetsel', 'haendler', 'kampf', 'schmiede', 'debug', 'elite']
       : hp > 0.75 ? ['elite', 'schmiede', 'raetsel', 'kampf', 'haendler', 'debug', 'rast']
@@ -315,7 +351,7 @@ export async function start(mode = 'gut', hero = 'magierin', { builds = null, ac
   Object.assign(B, { log: [], summary: null, running: true, mode, fights: [], rooms: [], fight: null, done: {} });
   game.meta.settings.tempo = 'turbo';
   if (builds !== null) game.meta.advanced = builds;
-  game.meta.tut = { karte: true, kampf: true, schmiede: true, debug: true, raetsel: true, haendler: true, rast: true, belohnung: true, akt2: true, builds: true };
+  game.meta.tut = { karte: true, kampf: true, schmiede: true, debug: true, raetsel: true, haendler: true, rast: true, belohnung: true, akt2: true, akt3: true, builds: true };
   game.run = null;
   save();
   window.confirm = () => true;
