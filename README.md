@@ -73,3 +73,16 @@ Neu rendern (z. B. andere Drehung oder mehr Licht):
 3. `http://localhost:8765/tools/figuren-render.html` öffnen, Figur und Drehung wählen, „Als PNG speichern“. Das Bild landet in `assets/figuren/`. Danach auf etwa 400 Pixel Höhe verkleinern.
 
 Der Ordner `tools/` (die 3D-Modelle sind zusammen über 400 MB groß) wird für das Spiel nicht gebraucht und sollte beim Veröffentlichen weggelassen werden.
+
+## Testbot
+
+`tools/spielbot.js` spielt das Spiel über die echte Oberfläche durch, als guter oder schlechter Spieler, und schreibt alles mit. In der Browser-Konsole auf der laufenden Seite:
+
+```js
+const b = await import('/tools/spielbot.js');
+await b.start('gut', 'magierin');   // oder 'schlecht', Figur: magierin, waechter, orakel
+BOT.fights; BOT.log; BOT.summary;
+```
+
+Der Bot schaltet das Tempo auf „turbo“ und markiert alle Einführungen als gesehen. Er überschreibt den Spielstand dieses Browsers.
+

@@ -3,7 +3,7 @@ import { CARDS, RIDDLES, CHOICE_EVENTS } from './data.js';
 import { game, save, rng, pick, makeCard, conceptUnlocked } from './state.js';
 import { runPy } from './natter.js';
 import { app, esc, codeView, varsView, toast } from './ui.js';
-import { chooseCard, cardPool } from './rooms.js';
+import { chooseCard, cardPool, addExp } from './rooms.js';
 import { offerRelic, unlockAchievement } from './relics.js';
 import { tutorialRiddle } from './tutorial.js';
 
@@ -50,7 +50,7 @@ function riddleRoom(done) {
     if (meta.riddles.length >= 5) unlockAchievement('raetselmeister');
     game.run.stats && (right ? game.run.stats.riddlesRight++ : game.run.stats.riddlesWrong++);
     save();
-    showSolution(r, res, answer, right, done);
+    addExp(right ? 10 : 3, () => showSolution(r, res, answer, right, done));
   };
   app().querySelector('.ok').addEventListener('click', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
@@ -69,7 +69,7 @@ function showSolution(r, res, answer, right, done) {
   }).join('') + `<tr><td><b>Ende</b></td><td>${varsView(res.vars, prev)}</td></tr>`;
   app().innerHTML = `<div class="room event">
     <h2>${right ? '✔ Richtig!' : '✘ Nicht ganz'}</h2>
-    <p>${right ? `<code>${esc(r.var)}</code> ist am Ende <b>${answer}</b>.` : `Richtig war <b>${answer}</b>. So läuft der Code Schritt für Schritt (vor jeder Zeile):`}</p>
+    <p>${right ? `<code>${esc(r.var)}</code> ist am Ende <b>${answer}</b>. +10 EXP` : `Richtig war <b>${answer}</b> (+3 EXP fürs Mitdenken). So läuft der Code Schritt für Schritt (vor jeder Zeile):`}</p>
     ${right ? '' : `<table class="trace">${rows}</table><p>${esc(r.erklaerung)}</p>`}
     <div class="row"><button class="btn ok">${right ? 'Belohnung wählen' : 'Weitergehen'}</button></div></div>`;
   app().querySelector('.ok').addEventListener('click', () => (right ? riddleReward(done) : done()));

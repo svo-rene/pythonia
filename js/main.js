@@ -210,6 +210,7 @@ function showMap() {
     const id = b.dataset.node;
     run.pos = id;
     run.path.push(id);
+    run.stats.rooms = (run.stats.rooms ?? 0) + 1;
     run.pending = id;
     save();
     enterRoom(nodes[id]);
@@ -285,7 +286,7 @@ function runOver(won) {
     <h1>${won ? '♛ Pythonia ist bezwungen!' : 'Der Run ist vorbei'}</h1>
     <p class="sub">${won ? `Du hast alle ${Object.keys(ACTS).length} Akte geschafft! Weitere Akte (Stapel, Warteschlangen und Klassen) folgen.` : `Du bist in Akt ${run.act ?? 1} gefallen. Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.`}</p>
     <p>+${points} Talentpunkt${points === 1 ? '' : 'e'}${!won && run.elitesWon ? ` (1 + ${run.elitesWon} für Elite-Siege)` : ''}</p>
-    <p class="hint">${run.path.length} ${run.path.length === 1 ? 'Raum' : 'Räume'} geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst${run.seedCode ? ` · Klassen-Code <b>${esc(run.seedCode)}</b>` : ''}${run.stufe ? ` · Stufe ${run.stufe}` : ''}</p>
+    <p class="hint">${run.stats?.rooms ?? run.path.length} ${(run.stats?.rooms ?? run.path.length) === 1 ? 'Raum' : 'Räume'} geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst${run.seedCode ? ` · Klassen-Code <b>${esc(run.seedCode)}</b>` : ''}${run.stufe ? ` · Stufe ${run.stufe}` : ''}</p>
     ${newStufe ? `<p class="good-note">⚔ Prüfungsstufe ${meta.stufeMax} freigeschaltet: ${esc(STUFEN[meta.stufeMax])}</p>` : ''}
     ${runReview(run, won)}
     <div class="menu"><button class="btn big" data-a="talents">Zum Talentbaum</button><button class="btn secondary" data-a="new">Neuer Run</button></div></div>`;
@@ -299,10 +300,12 @@ function runReview(run, won) {
   const fav = Object.entries(s.relicFires ?? {}).sort((a, b) => b[1] - a[1])[0];
   const preds = (s.predRight ?? 0) + (s.predWrong ?? 0);
   let says;
-  if (s.bestHit && s.bestHit.dmg >= 20) says = `„${s.bestHit.dmg} Schaden mit einer einzigen Karte! Genau so rechnet ein Meister.“`;
+  if (!won) says = s.bestHit && s.bestHit.dmg >= 15
+    ? `„Dein ${s.bestHit.name} mit ${s.bestHit.dmg} Schaden war stark. Nächstes Mal kommst du weiter!“`
+    : '„Jeder Fehler ist ein Test, der dir etwas verrät. Versuch es noch einmal.“';
+  else if (s.bestHit && s.bestHit.dmg >= 20) says = `„${s.bestHit.dmg} Schaden mit einer einzigen Karte! Genau so rechnet ein Meister.“`;
   else if (preds && s.predRight / preds >= 0.6) says = '„Du liest Code, bevor er läuft. Das ist die halbe Zauberkunst.“';
   else if ((s.riddlesRight ?? 0) >= 2) says = '„Die Rätselgeister reden schon über dich.“';
-  else if (!won) says = '„Jeder Fehler ist ein Test, der dir etwas verrät. Versuch es noch einmal.“';
   else says = '„Sauber gezaubert. Der Verzweiger hat keine Verzweigung mehr übrig.“';
   return `<div class="review">
     <h3>📜 Rückblick</h3>

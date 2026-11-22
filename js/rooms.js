@@ -10,7 +10,10 @@ const lese = () => game.meta.settings.lesehilfe;
 
 // ---------- gemeinsame Teile ----------
 export function cardPool() {
-  return Object.keys(CARDS).filter((id) => conceptUnlocked(CARDS[id].concept) && id !== 'funke' && id !== 'schutz');
+  // Nur Karten, deren Konzept gelernt ist und zum aktuellen Akt passt (Kristall-Karten erst ab Akt 2)
+  const act = game.run?.act ?? 1;
+  return Object.keys(CARDS).filter((id) => conceptUnlocked(CARDS[id].concept) && (CARDS[id].act ?? CONCEPTS[CARDS[id].concept]?.act ?? 1) <= act
+    && id !== 'funke' && id !== 'schutz');
 }
 
 function fmtVal(v) {
@@ -67,7 +70,7 @@ function editorWire(ta) {
   });
 }
 
-function addExp(amount, done) {
+export function addExp(amount, done) {
   const run = game.run;
   run.exp += amount;
   levelUps(done);
@@ -327,9 +330,8 @@ export function debugRoom(done) {
 export function shopRoom(done) {
   const run = game.run;
   const offers = shuffle(cardPool()).slice(0, 3).map((id) => ({ id, price: 40 + Math.floor(rng() * 4) * 10, sold: false }));
-  const relic = shuffle(relicPool())[0];
-  let relicSold = !relic;
-  const relicPrice = 70 + Math.floor(rng() * 3) * 10;
+  const relics = shuffle(relicPool()).slice(0, 2).map((id) => ({ id, price: 70 + Math.floor(rng() * 3) * 10, sold: false }));
+  const upPrice = 45;
   let healed = false;
   const render = () => {
     const removePrice = 50 + 25 * run.removeCount;
@@ -343,13 +345,14 @@ export function shopRoom(done) {
       <div class="panel-title">Karten</div>
       <div class="offers cards">${offers.map((o, i) => o.sold ? '<div class="offer sold">verkauft</div>' : `<div class="offer">${cardView(CARDS[o.id], { lesehilfe: lese() })}
         <button class="btn" data-buy="${i}" ${run.gold >= o.price ? '' : 'disabled'}>${o.price} Gold</button></div>`).join('')}</div>
-      ${relic ? `<div class="panel-title">Relikt</div>
-      <div class="offers">${relicSold ? '<div class="offer sold">verkauft</div>' : `<div class="offer">${relicView(relic)}
-        <button class="btn buy-relic" ${run.gold >= relicPrice ? '' : 'disabled'}>${relicPrice} Gold</button></div>`}</div>` : ''}
+      ${relics.length ? `<div class="panel-title">Relikte</div>
+      <div class="offers">${relics.map((r, i) => r.sold ? '<div class="offer sold">verkauft</div>' : `<div class="offer">${relicView(r.id)}
+        <button class="btn buy-relic" data-relic="${i}" ${run.gold >= r.price ? '' : 'disabled'}>${r.price} Gold</button></div>`).join('')}</div>` : ''}
       <div class="panel-title">Dienste</div>
       <div class="row">
         <button class="btn secondary remove" ${run.gold >= removePrice ? '' : 'disabled'}>Karte entfernen (${removePrice} Gold)</button>
         <button class="btn secondary heal" ${run.gold >= 30 && !healed ? '' : 'disabled'}>15 Leben heilen (30 Gold)</button>
+        <button class="btn secondary upgrade" ${run.gold >= upPrice && run.deck.some((c) => !c.up && CARDS[c.id]?.up) ? '' : 'disabled'}>Karte verbessern (${upPrice} Gold)</button>
       </div>
       <div class="row"><button class="btn leave">Weiter</button></div></div>`;
     const el = app();
@@ -363,11 +366,21 @@ export function shopRoom(done) {
       save();
       render();
     }));
-    el.querySelector('.buy-relic')?.addEventListener('click', () => {
-      run.gold -= relicPrice;
-      relicSold = true;
-      gainRelic(relic);
+    el.querySelectorAll('.buy-relic').forEach((b) => b.addEventListener('click', () => {
+      const r = relics[Number(b.dataset.relic)];
+      run.gold -= r.price;
+      r.sold = true;
+      gainRelic(r.id);
       render();
+    }));
+    el.querySelector('.upgrade').addEventListener('click', () => {
+      const upgradable = run.deck.filter((c) => !c.up && CARDS[c.id]?.up);
+      chooseCard('Welche Karte verbessern? Links vorher, rechts nachher.', upgradable, (card) => {
+        run.gold -= upPrice;
+        card.up = true;
+        save();
+        render();
+      }, { showUp: true });
     });
     el.querySelector('.remove').addEventListener('click', () => chooseCard('Welche Karte soll weg?', run.deck, (card) => {
       run.gold -= removePrice;
@@ -486,11 +499,13 @@ export function rewardScreen(kind, done) {
   const choices = shuffle(cardPool()).slice(0, n);
   save();
   app().innerHTML = `<div class="room reward">
-    <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold})${kind === 'elite' ? ' · Danach wählst du ein Relikt.' : ''}</p>
+    <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold}) · +${kind === 'elite' ? 25 : 10} EXP${kind === 'elite' ? ' · Danach wählst du ein Relikt.' : ''}</p>
     <p>Wähle eine Karte für dein Deck, oder überspringe. Ein schlankes Deck ist oft stärker.</p>
     <div class="card-grid">${choices.map((id) => `<div data-id="${id}">${cardView(CARDS[id], { lesehilfe: lese() })}</div>`).join('')}</div>
     <div class="row"><button class="btn secondary skip">Überspringen</button></div></div>`;
-  const next = () => (kind === 'elite' ? offerRelic(2, done) : done());
+  const exp = kind === 'elite' ? 25 : 10;
+  const finish = () => addExp(exp, done);
+  const next = () => (kind === 'elite' ? offerRelic(2, finish) : finish());
   app().querySelectorAll('[data-id]').forEach((d) => d.addEventListener('click', () => {
     run.deck.push(makeCard(d.dataset.id));
     noteBook('cards', d.dataset.id);

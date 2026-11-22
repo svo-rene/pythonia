@@ -107,7 +107,7 @@ function cardCost(def) {
   return c;
 }
 const alive = () => C.enemies.filter((e) => e.hp > 0);
-const speed = () => (game.meta.settings.tempo === 'schnell' ? 0.35 : 1);
+const speed = () => ({ schnell: 0.35, turbo: 0.02 }[game.meta.settings.tempo] ?? 1);   // turbo: nur für den Testbot
 
 function drawCards(n) {
   for (let i = 0; i < n; i++) {
@@ -294,7 +294,8 @@ async function playCard(uid, prediction = null, eingabe = null) {
   }
 
   await animate(def, start, res);
-  C.discard.push(uid);
+  if (def.einmalig) (C.exhausted ??= []).push(uid);   // Einmal-Karten sind für den Rest des Kampfs weg
+  else C.discard.push(uid);
 
   if (!res.ok) {
     C.view = null;
@@ -461,7 +462,8 @@ function applyEnemyResult(e, start, v) {
     if (v[k] !== undefined) e.mem[k] = v[k];
   }
   setKristalle(v.kristalle);
-  if (v.fluch) {
+  if (v.fluch && !C.bugGiven) {
+    C.bugGiven = true;   // höchstens eine Bug-Karte pro Kampf
     const bugId = BUG_BY_NAME[v.fluch];
     if (bugId) {
       const card = makeCard(bugId);
@@ -696,3 +698,8 @@ function askPrediction(uid, eingabe = null) {
 }
 
 export function rerenderCombat() { if (C) render(); }
+
+/** Nur für Tests (tools/spielbot.js): Einblick in den laufenden Kampf. */
+export function _debugCombat() {
+  return { C, baseVars, cardDef, cardByUid, cardCost, metricFor, metricValue, withInput, inputRange, enemyDeltas, alive };
+}
