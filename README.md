@@ -21,7 +21,7 @@ py -m http.server 8765
 | Akt 1 · Höhle der Verzweigungen | Variablen, if/elif, for, while | fertig | 🎲 Würfelkasino (Zufall), ⚖ Blutarena (Waage) |
 | Akt 2 · Listengruben | Listen, Sortieren, Komplexität (Rechenzeit ⏱) | fertig | 🐺 Rudelwald (Beschwörer), 📚 Bibliothek (Archivar) |
 | Akt 3 · Spiegelturm | Funktionen, return, Rekursion (Spiegelschleime teilen sich; Fibonacci-Rabe; Schmieden Erste Funktion, Countdown, Summenturm, Der Größte) | fertig | |
-| Akt 4 · Klassenfestung | Klassen, Objekte, Vererbung | geplant | |
+| Akt 4 · Klassenfestung | Klassen, `__init__`/`self`, Methoden, Vererbung mit `super()` (Golem-Fabrik baut neue Gegner per Methode; Schmieden Erste Klasse, Methode, Vererbung, Kristallarmee) | fertig | |
 
 Ein geschaffter Akt öffnet den nächsten; man kann jeden offenen Akt direkt starten (mit Ausgleich: Karten, Gold, Leben, Level). Freie Welten sind kürzer (6 Ebenen + Boss), alle Figuren und Karten sind erlaubt, ihr Kartenset wird in den Belohnungen bevorzugt.
 

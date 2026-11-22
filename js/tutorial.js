@@ -213,3 +213,10 @@ export function tutorialAct3() {
     { sel: '.foe', text: 'Ein <b>Spiegelschleim</b> teilt sich, wenn er fällt: in zwei halb so große. Die teilen sich wieder, bis sie zu klein sind. Genau so arbeitet eine Rekursion mit Abbruch.' },
   ]);
 }
+
+export function tutorialAct4() {
+  runTutorial('akt4', [
+    { sel: '.foe .intent', text: '<b>In der Klassenfestung</b> ist jeder Gegner ein Objekt. <code>class</code> ist der Bauplan, <code>__init__</code> legt fest, was sich das Objekt merkt (<code>self.…</code>), und Methoden sind seine Fähigkeiten. ❓ erklärt jede Zeile.' },
+    { sel: '.hand', text: 'Auch deine Karten bauen jetzt Objekte, zum Beispiel ein Schild, das mit <code>halten()</code> Block gibt. Und Vorsicht: Manche Gegner bauen mit einer Methode neue Gegner!' },
+  ]);
+}

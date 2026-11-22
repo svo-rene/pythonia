@@ -469,3 +469,15 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
 .stage.foes-4 .foe { width: 150px; }
 .stage.foes-4 .foes { gap: 6px; }
 .stage.foes-4 .foe img.sprite.bild { height: 105px; }
+
+
+/* Mittlere Breiten (kleine Laptops, Tablets quer): Bühne gestapelt, damit nichts abgeschnitten wird */
+@media (max-width: 1050px) {
+  .stage { grid-template-columns: 1fr 1fr; grid-template-areas: 'foes foes' 'hero hero' 'lp rp'; gap: 10px; }
+  .stage .hero { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 0 14px; }
+  .stage .hero .fig { order: 1; }
+  .stage .hero .over { order: 2; width: 220px; }
+  .stage .hero .fname { order: 3; width: 100%; }
+  .foes { justify-content: center; flex-wrap: wrap; }
+  .stage.foes-3 .foe, .stage.foes-4 .foe { width: auto; flex: 1 1 0; min-width: 140px; max-width: 230px; }
+}

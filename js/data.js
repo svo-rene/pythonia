@@ -447,10 +447,10 @@ Object.assign(CARDS, {
 
 Object.assign(ENEMIES, {
   echofledermaus: { name: 'Echofledermaus', hp: 34, mem: { echo: [] },
-    code: 'echo.append(4)\nfor e in echo:\n    leben -= e' },
+    code: 'echo.append(3)\nfor e in echo:\n    leben -= e' },
   kristalldieb: { name: 'Kristalldieb', hp: 38,
     code: 'if len(kristalle) > 0:\n    kristalle.pop()\n    leben -= 5\nelse:\n    leben -= 12' },
-  minenwurm: { name: 'Minenwurm', hp: 42, mem: { minen: [5, 11, 7] },
+  minenwurm: { name: 'Minenwurm', hp: 42, mem: { minen: [4, 9, 6] },
     code: 'leben -= minen[0]\nminen.append(minen.pop(0) + 1)' },
   zahlenhydra: { name: 'Zahlenhydra', hp: 85, elite: true, mem: { koepfe: [5] },
     code: 'for k in koepfe:\n    leben -= k\nkoepfe.append(5)' },
@@ -902,7 +902,7 @@ Object.assign(ENEMIES, {
   spiegelschleim: { name: 'Spiegelschleim', hp: 24, teilt: true,
     code: 'def echo(n):\n    if n == 0:\n        return 0\n    return 2 + echo(n - 1)\nleben -= echo(mein_leben // 6 + 1)' },
   turmwaechter: { name: 'Turmwächter', hp: 46, mem: { runde: 0 },
-    code: 'def schlag(stufe):\n    return stufe * 3 + 2\nrunde += 1\nleben -= schlag(runde)' },
+    code: 'def schlag(stufe):\n    return stufe * 2 + 3\nrunde += 1\nleben -= schlag(runde)' },
   rekursionsrabe: { name: 'Rekursionsrabe', hp: 36, mem: { runde: 0 },
     code: 'def flug(n):\n    if n <= 1:\n        return 1\n    return flug(n - 1) + flug(n - 2)\nrunde += 1\nleben -= flug(runde + 2)' },
   spiegelritter: { name: 'Der Spiegelritter', hp: 100, elite: true,
@@ -1026,4 +1026,141 @@ Object.assign(ACTS[3], {
   bald: false, plan: MAP_PLAN_3, boss: 'boss3',
   intro: 'Im Spiegelturm rechnen alle mit Funktionen: def legt sie an, return gibt ein Ergebnis zurück. Und manche rufen sich selbst auf (Rekursion). Spiegelschleime teilen sich, wenn sie fallen, in zwei halb so große, bis sie zu klein sind. Wie eine Rekursion mit Abbruch!',
   geschenk: ['formel', 'turmbau'], konzept: 'rekursion',
+});
+
+// =====================================================================
+// AKT 4: Die Klassenfestung (Klassen, Objekte, Methoden, Vererbung)
+// Besonderheit: Gegner können mit einer Methode neue Gegner bauen (Variable beschwoere = Name des Gegners).
+// =====================================================================
+CONCEPTS.oop = { name: 'Klassen und Objekte', act: 4, price: 0,
+  quiz: { code: 'class Trank:\n    def __init__(self, kraft):\n        self.kraft = kraft\nt = Trank(3)\nx = t.kraft * 2', frage: 'Welchen Wert hat x am Ende?', antwort: 6,
+    erklaerung: 'Trank(3) erzeugt ein Objekt. __init__ speichert 3 in self.kraft. t.kraft ist also 3, mal 2 gibt 6.' } };
+
+Object.assign(ENEMIES, {
+  ruestungsgolem: { name: 'Rüstungsgolem', hp: 58,
+    code: 'class Golem:\n    def __init__(self, kraft):\n        self.kraft = kraft\n    def schlag(self):\n        return self.kraft * 2\ng = Golem(5)\nleben -= g.schlag()' },
+  minigolem: { name: 'Minigolem', hp: 16,
+    code: 'class Golem:\n    def __init__(self, kraft):\n        self.kraft = kraft\nleben -= Golem(4).kraft' },
+  schildknappe: { name: 'Schildknappe', hp: 48,
+    code: 'class Knappe:\n    def __init__(self):\n        self.wut = 4\n    def angriff(self, block):\n        if block > 0:\n            return self.wut\n        return self.wut * 3\nleben -= Knappe().angriff(block)' },
+  bogenschuetze: { name: 'Bogenschütze', hp: 42,
+    code: 'class Krieger:\n    def angriff(self):\n        return 7\nclass Schuetze(Krieger):\n    def angriff(self):\n        return super().angriff() + 5\nleben -= Schuetze().angriff()' },
+  golemfabrik: { name: 'Golem-Fabrik', hp: 110, elite: true, mem: { runde: 0, beschwoere: '' },
+    code: 'class Fabrik:\n    def baue(self, runde):\n        if runde % 2 == 1:\n            return "minigolem"\n        return ""\nrunde += 1\nbeschwoere = Fabrik().baue(runde)\nleben -= 7' },
+  urklasse: { name: 'Die Urklasse', hp: 210, boss: true, mem: { runde: 0, beschwoere: '' },
+    code: 'class Zauber:\n    def wirke(self):\n        return 10\nclass Feuer(Zauber):\n    def wirke(self):\n        return super().wirke() + 8\nrunde += 1\nif runde % 3 == 0:\n    beschwoere = "minigolem"\nelif runde % 3 == 1:\n    leben -= Feuer().wirke()\nelse:\n    leben -= Zauber().wirke()\n    block = 0' },
+});
+Object.assign(ENCOUNTERS, {
+  golem: ['ruestungsgolem'],
+  knappe: ['schildknappe'],
+  schuetze: ['bogenschuetze'],
+  knappe_schuetze: ['schildknappe', 'bogenschuetze'],
+  golem_schuetze: ['ruestungsgolem', 'bogenschuetze'],
+  fabrik: ['golemfabrik'],
+  boss4: ['urklasse'],
+});
+
+Object.assign(CARDS, {
+  schildobjekt: { act: 4, name: 'Schild-Objekt', cost: 1, concept: 'oop', type: 'skill',
+    code: 'class Schild:\n    def __init__(self, dicke):\n        self.dicke = dicke\n    def halten(self):\n        return self.dicke * 2\nblock += Schild(4).halten()', text: 'Erzeugt ein Schild-Objekt mit dicke 4. Seine Methode halten() gibt 8 Block.',
+    up: { code: 'class Schild:\n    def __init__(self, dicke):\n        self.dicke = dicke\n    def halten(self):\n        return self.dicke * 2\nblock += Schild(6).halten()', text: 'Schild(6).halten() = 12 Block.' } },
+  methodenstoss: { act: 4, name: 'Lanzenstoß', cost: 1, concept: 'oop', type: 'angriff', target: true,
+    code: 'class Lanze:\n    def __init__(self):\n        self.spitze = 7\n    def stoss(self, extra):\n        return self.spitze + extra\nziel_leben -= Lanze().stoss(staerke)', text: 'Die Methode stoss bekommt deine Stärke als Parameter: 7 plus Stärke.',
+    up: { code: 'class Lanze:\n    def __init__(self):\n        self.spitze = 10\n    def stoss(self, extra):\n        return self.spitze + extra\nziel_leben -= Lanze().stoss(staerke)', text: '10 plus Stärke.' } },
+  flammenschwert: { act: 4, name: 'Flammenschwert', cost: 1, concept: 'oop', type: 'angriff', target: true,
+    code: 'class Waffe:\n    def schaden(self):\n        return 5\nclass Flammenschwert(Waffe):\n    def schaden(self):\n        return super().schaden() * 2\nziel_leben -= Flammenschwert().schaden()', text: 'Flammenschwert erbt von Waffe und verdoppelt deren Schaden: 10.',
+    up: { code: 'class Waffe:\n    def schaden(self):\n        return 6\nclass Flammenschwert(Waffe):\n    def schaden(self):\n        return super().schaden() * 2\nziel_leben -= Flammenschwert().schaden()', text: 'Waffe macht 6, das Flammenschwert das Doppelte: 12.' } },
+  golembau: { act: 4, name: 'Golembau', cost: 1, concept: 'oop', type: 'skill',
+    code: 'class Golem:\n    def __init__(self, kraft):\n        self.kraft = kraft\ng = Golem(3 + staerke)\nbegleiter.append(g.kraft)', text: 'Baut einen Golem mit kraft 3 plus Stärke. Er kämpft als Begleiter mit.',
+    up: { code: 'class Golem:\n    def __init__(self, kraft):\n        self.kraft = kraft\ng = Golem(5 + staerke)\nbegleiter.append(g.kraft)', text: 'Golem mit kraft 5 plus Stärke als Begleiter.' } },
+  truppe: { act: 4, name: 'Truppe', cost: 2, concept: 'oop', type: 'angriff', target: true,
+    code: 'class Soldat:\n    def __init__(self, kraft):\n        self.kraft = kraft\ntruppe = [Soldat(3), Soldat(4), Soldat(5)]\nfor s in truppe:\n    ziel_leben -= s.kraft', text: 'Eine Liste aus drei Soldaten-Objekten. Jeder trifft mit seiner kraft: 12 Schaden.',
+    up: { code: 'class Soldat:\n    def __init__(self, kraft):\n        self.kraft = kraft\ntruppe = [Soldat(4), Soldat(5), Soldat(6), Soldat(3)]\nfor s in truppe:\n    ziel_leben -= s.kraft', text: 'Vier Soldaten: 18 Schaden.' } },
+});
+
+Object.assign(BUGS, {
+  vergessenes_self: { name: 'Vergessenes self', cost: 1, concept: 'oop', type: 'skill', bug: true,
+    code: 'class Schild:\n    def __init__(self, dicke):\n        dicke = dicke\n    def halten(self):\n        return self.dicke * 2\nblock += Schild(5).halten()',
+    text: 'Bug: Das Schild vergisst seine Dicke. Die Karte bricht mit einem Fehler ab.',
+    ziel: 'Schild(5) soll sich seine dicke merken. halten() gibt das Doppelte zurück: 10 Block.',
+    loesung: 'class Schild:\n    def __init__(self, dicke):\n        self.dicke = dicke\n    def halten(self):\n        return self.dicke * 2\nblock += Schild(5).halten()',
+    pruefe: ['block'],
+    tests: [{ block: 0 }, { block: 4 }],
+    hinweise: ['Lies die Fehlermeldung: Das Objekt hat kein dicke. Wo sollte es gespeichert werden?', 'dicke = dicke ändert nur eine lokale Variable. Das Objekt merkt sich nur, was in self.… steht.', 'Schreibe in __init__: self.dicke = dicke'],
+    repariert: { name: 'Festes Schild', cost: 1, text: 'Repariert: Schild(5).halten() = 10 Block.' } },
+});
+
+Object.assign(FORGES, {
+  erste_klasse: {
+    titel: 'Erste Klasse', stufe: 'leicht', modus: 'parsons', konzepte: ['oop'],
+    auftrag: 'Lege eine Klasse Trank an. Ihr __init__ bekommt staerke und merkt sie sich in self.staerke. Erzeuge dann einen Trank mit 6 und erhöhe leben um seine staerke.',
+    zeilen: ['class Trank:', '    def __init__(self, staerke):', '        self.staerke = staerke', 't = Trank(6)', 'leben += t.staerke'],
+    falsch: ['        staerke = staerke'],
+    pruefe: ['leben'],
+    tests: [{ leben: 20 }, { leben: 1 }],
+    hinweise: ['Erst die Klasse mit __init__, dann ein Objekt erzeugen, dann sein Attribut benutzen.', 'staerke = staerke speichert nichts im Objekt. Es muss self.staerke heißen.', 'class Trank: / def __init__(self, staerke): / self.staerke = staerke / t = Trank(6) / leben += t.staerke'],
+    karte: { name: 'Heiltrank', cost: 1, type: 'skill', text: 'Deine geschmiedete Karte: ein Trank-Objekt heilt 6.' },
+  },
+  methode: {
+    titel: 'Methode', stufe: 'leicht', modus: 'parsons', konzepte: ['oop'],
+    auftrag: 'Die Klasse Bogen hat 3 pfeile (in __init__). Ihre Methode schiessen gibt pfeile * 4 zurück. Ziehe das Ergebnis von ziel_leben ab.',
+    zeilen: ['class Bogen:', '    def __init__(self):', '        self.pfeile = 3', '    def schiessen(self):', '        return self.pfeile * 4', 'ziel_leben -= Bogen().schiessen()'],
+    falsch: ['    def schiessen():'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 30 }, { ziel_leben: 12 }],
+    hinweise: ['Jede Methode bekommt als ersten Parameter self, damit sie an die Attribute kommt.', 'def schiessen(): ohne self funktioniert nicht, Python übergibt das Objekt immer mit.', 'Die Methode steht eingerückt in der Klasse, auf derselben Höhe wie __init__.'],
+    karte: { name: 'Bogen', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: Bogen().schiessen() = 12 Schaden.' },
+  },
+  erbschaft: {
+    titel: 'Vererbung', stufe: 'schwer', modus: 'frei', konzepte: ['oop'], maxZeilen: 8,
+    auftrag: 'Die Klasse Zauber ist schon da (kraft() gibt 4). Schreibe darunter eine Klasse Feuerball, die von Zauber erbt. Ihre Methode kraft() soll mit super() doppelt so viel liefern. Ziehe Feuerball().kraft() von ziel_leben ab.',
+    vorlage: 'class Zauber:\n    def kraft(self):\n        return 4\n\n',
+    loesung: 'class Zauber:\n    def kraft(self):\n        return 4\nclass Feuerball(Zauber):\n    def kraft(self):\n        return super().kraft() * 2\nziel_leben -= Feuerball().kraft()',
+    zeilen: ['class Zauber:', '    def kraft(self):', '        return 4', 'class Feuerball(Zauber):', '    def kraft(self):', '        return super().kraft() * 2', 'ziel_leben -= Feuerball().kraft()'],
+    falsch: ['class Feuerball:'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 30 }, { ziel_leben: 8 }],
+    hinweise: ['Vererbung: class Feuerball(Zauber): Die Elternklasse steht in Klammern.', 'In der neuen kraft() holst du mit super().kraft() den Wert der Elternklasse.', 'class Feuerball(Zauber):\n    def kraft(self):\n        return super().kraft() * 2'],
+    karte: { name: 'Feuerball', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: geerbte Kraft, verdoppelt.' },
+  },
+  objektliste: {
+    titel: 'Kristallarmee', stufe: 'schwer', modus: 'frei', konzepte: ['oop', 'for'], maxZeilen: 8,
+    auftrag: 'Die Klasse Kristall ist schon da (sie merkt sich wert). Lege eine Liste mit drei Kristall-Objekten an: Werte 2, 5 und 8. Ziehe dann mit einer Schleife jeden wert von ziel_leben ab.',
+    vorlage: 'class Kristall:\n    def __init__(self, wert):\n        self.wert = wert\n\n',
+    loesung: 'class Kristall:\n    def __init__(self, wert):\n        self.wert = wert\nliste = [Kristall(2), Kristall(5), Kristall(8)]\nfor k in liste:\n    ziel_leben -= k.wert',
+    zeilen: ['class Kristall:', '    def __init__(self, wert):', '        self.wert = wert', 'liste = [Kristall(2), Kristall(5), Kristall(8)]', 'for k in liste:', '    ziel_leben -= k.wert'],
+    falsch: ['    ziel_leben -= k'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 40 }, { ziel_leben: 15 }],
+    hinweise: ['Ein Objekt erzeugst du mit Kristall(2). Mehrere passen in eine Liste: [Kristall(2), …].', 'k ist in der Schleife ein ganzes Objekt. Seinen Wert bekommst du mit k.wert.', 'liste = [Kristall(2), Kristall(5), Kristall(8)], dann for k in liste: ziel_leben -= k.wert'],
+    karte: { name: 'Kristallarmee', cost: 2, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: drei Kristall-Objekte treffen, 15 Schaden.' },
+  },
+});
+Object.assign(FORGE_LEVEL, { erste_klasse: 'leicht', methode: 'leicht', erbschaft: 'schwer', objektliste: 'schwer' });
+
+Object.assign(RIDDLES, {
+  attribut: { concept: 'oop', var: 'x', code: 'class Kiste:\n    def __init__(self, gold):\n        self.gold = gold\na = Kiste(5)\nb = Kiste(3)\nx = a.gold - b.gold',
+    erklaerung: 'Zwei verschiedene Objekte, jedes merkt sich sein eigenes gold: 5 und 3. Die Differenz ist 2.' },
+  methode2: { concept: 'oop', var: 'x', code: 'class Zaehler:\n    def __init__(self):\n        self.n = 0\n    def plus(self):\n        self.n += 2\nz = Zaehler()\nz.plus()\nz.plus()\nx = z.n',
+    erklaerung: 'Jeder Aufruf von plus() erhöht self.n um 2. Zweimal aufgerufen: 0 → 2 → 4.' },
+  erbe: { concept: 'oop', var: 'x', code: 'class Tier:\n    def beine(self):\n        return 4\nclass Vogel(Tier):\n    def beine(self):\n        return 2\nx = Tier().beine() + Vogel().beine()',
+    erklaerung: 'Vogel überschreibt beine() und liefert 2, das Tier 4. Zusammen 6.' },
+});
+
+export const MAP_PLAN_4 = [
+  { typ: 'kampf', pool: ['golem', 'knappe'] },
+  { zufall: { kampf: 3, raetsel: 2, haendler: 1 }, pool: ['golem', 'knappe', 'schuetze'] },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['knappe', 'schuetze'], forges: ['erste_klasse', 'methode'] },
+  { zufall: { kampf: 3, elite: 2, rast: 1 }, pool: ['schuetze', 'golem', 'knappe'], elite: 'fabrik' },
+  { zufall: { haendler: 1, rast: 1, raetsel: 1 } },
+  { zufall: { debug: 1, kampf: 1, rast: 1 }, pool: ['knappe_schuetze', 'golem_schuetze'] },
+  { zufall: { kampf: 3, elite: 1, raetsel: 1 }, pool: ['knappe_schuetze', 'golem_schuetze'], elite: 'fabrik' },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['knappe_schuetze', 'golem_schuetze'], forges: ['erbschaft', 'objektliste'] },
+  { zufall: { kampf: 2, haendler: 1, raetsel: 1 }, pool: ['golem_schuetze', 'knappe_schuetze'] },
+  { typ: 'rast' },
+];
+Object.assign(ACTS[4], {
+  bald: false, plan: MAP_PLAN_4, boss: 'boss4',
+  intro: 'In der Klassenfestung ist alles ein Objekt. Eine Klasse ist ein Bauplan, __init__ legt fest, was sich jedes Objekt merkt (self.…), und Methoden sind seine Fähigkeiten. Manche Gegner bauen mit einer Methode sogar neue Gegner!',
+  geschenk: ['schildobjekt', 'methodenstoss'], konzept: 'oop',
 });

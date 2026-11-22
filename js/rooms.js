@@ -270,7 +270,7 @@ function finishForge(key, f, st, code, done) {
 export function debugRoom(done) {
   const run = game.run;
   let card = run.deck.find((c) => BUGS[c.id]);
-  const bugId = (run.act ?? 1) >= 3 ? 'ohne_abbruch' : 'zaunpfahl';
+  const bugId = (run.act ?? 1) >= 4 ? 'vergessenes_self' : (run.act ?? 1) >= 3 ? 'ohne_abbruch' : 'zaunpfahl';
   let intro = '';
   if (!card) {
     card = makeCard(bugId);

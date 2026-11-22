@@ -351,7 +351,7 @@ export async function start(mode = 'gut', hero = 'magierin', { builds = null, ac
   Object.assign(B, { log: [], summary: null, running: true, mode, fights: [], rooms: [], fight: null, done: {} });
   game.meta.settings.tempo = 'turbo';
   if (builds !== null) game.meta.advanced = builds;
-  game.meta.tut = { karte: true, kampf: true, schmiede: true, debug: true, raetsel: true, haendler: true, rast: true, belohnung: true, akt2: true, akt3: true, builds: true };
+  game.meta.tut = { karte: true, kampf: true, schmiede: true, debug: true, raetsel: true, haendler: true, rast: true, belohnung: true, akt2: true, akt3: true, akt4: true, builds: true };
   game.run = null;
   save();
   window.confirm = () => true;

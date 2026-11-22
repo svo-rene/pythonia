@@ -23,6 +23,15 @@ function fromPy(v) {
   if (typeof v === 'bigint') return Number(v);
   if (v instanceof N.PyBuiltin || v instanceof N.PyFunction || v instanceof N.PyModule) return undefined;
   if (v === null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') return v;
+  if (v instanceof N.PyInstance) {
+    // Objekte lesbar anzeigen, z. B. ‹Golem kraft=5›
+    let attrs = '';
+    try {
+      const entries = v.dict instanceof Map ? [...v.dict] : Object.entries(v.dict ?? {});
+      attrs = entries.filter(([k]) => !String(k).startsWith('_')).map(([k, x]) => `${k}=${JSON.stringify(fromPy(x))}`).join(' ');
+    } catch { /* Attribute nicht lesbar: nur der Klassenname */ }
+    return `‹${v.cls?.name ?? 'Objekt'}${attrs ? ` ${attrs}` : ''}›`;
+  }
   return undefined;
 }
 
@@ -92,7 +101,7 @@ function codeOnly(code) {
   return code.replace(/#.*$/gm, '').replace(/"[^"\n]*"|'[^'\n]*'/g, '""');
 }
 
-const KEYWORD_CONCEPT = { elif: 'elif', for: 'for', while: 'while' };
+const KEYWORD_CONCEPT = { elif: 'elif', for: 'for', while: 'while', class: 'oop' };
 const METHOD_CONCEPT = [[/\.(append|pop|insert|remove)\s*\(/, 'liste'], [/\.sort\s*\(|\bsorted\s*\(/, 'sort']];
 
 /**

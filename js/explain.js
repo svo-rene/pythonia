@@ -39,6 +39,7 @@ const VARS = {
   ablage: 'die Namen der Karten in deinem Ablagestapel, die zuletzt abgelegte steht hinten',
   ziehstapel: 'die Namen der Karten in deinem Ziehstapel, die oberste steht hinten',
   wurf: 'eine Zufallszahl, die der Code gewürfelt hat',
+  beschwoere: 'der Name des Gegners, den diese Methode bauen soll (leer = keiner)',
   kristalle: 'deine Kristall-Liste: Zahlen, die du sammelst und wirfst. Sie bleibt im ganzen Kampf erhalten',
   echo: 'eine Liste, die sich der Gegner merkt und die jede Runde wächst',
   minen: 'eine Liste mit Minen; die vorderste explodiert',
@@ -58,6 +59,10 @@ const CONCEPTS = [
   { test: /\[\s*-?\d*\s*:\s*-?\d*\s*\]/, name: 'Slicing [a:b]', text: '<code>liste[1:3]</code> ist ein Ausschnitt: die Positionen 1 und 2 (die 3 nicht mehr). <code>liste[:2]</code> sind die ersten beiden.' },
   { test: /\[-1\]/, name: 'Index -1', text: '<code>liste[-1]</code> ist das letzte Element, <code>liste[-2]</code> das vorletzte.' },
   { test: /\b(sum|max|min)\(/, name: 'sum(), max(), min()', text: '<code>sum(liste)</code> addiert alle Werte, <code>max(liste)</code> ist der größte, <code>min(liste)</code> der kleinste.' },
+  { test: /^\s*class \w+/m, name: 'Klasse', text: 'Eine <b>Klasse</b> ist ein Bauplan. <code>Golem(5)</code> baut nach diesem Plan ein <b>Objekt</b>. Von einer Klasse kann man viele Objekte bauen, jedes mit eigenen Werten.' },
+  { test: /__init__/, name: '__init__ und self', text: '<code>__init__</code> läuft automatisch, wenn ein Objekt gebaut wird. <code>self</code> ist das Objekt selbst: <code>self.kraft = kraft</code> heißt „dieses Objekt merkt sich seine kraft“. Ohne <code>self.</code> wäre der Wert gleich wieder vergessen.' },
+  { test: /^\s+def (?!__init__)\w+\(self/m, name: 'Methode', text: 'Eine <b>Methode</b> ist eine Funktion, die zu einem Objekt gehört. Sie bekommt als ersten Parameter <code>self</code> und kann so auf die Attribute des Objekts zugreifen. Aufruf: <code>objekt.methode()</code>.' },
+  { test: /^\s*class \w+\(\w+\)/m, name: 'Vererbung', text: '<code>class Schuetze(Krieger)</code>: Der Schütze <b>erbt</b> alles vom Krieger. Er kann Methoden <b>überschreiben</b> und mit <code>super().angriff()</code> die Version der Elternklasse aufrufen.' },
   { test: /\brandom\.randint\(/, name: 'random.randint()', text: '<code>import random</code> lädt das Zufallsmodul. <code>random.randint(1, 6)</code> liefert eine zufällige ganze Zahl von 1 bis 6, <b>beide Grenzen eingeschlossen</b>, wie ein Würfel.' },
   { test: /^\s*def (\w+)\([^)]*\):[\s\S]*\b\1\(/m, name: 'Rekursion', text: 'Die Funktion ruft sich <b>selbst</b> auf, jedes Mal mit einem kleineren Wert. Die Bedingung oben (der <b>Abbruch</b>, z. B. <code>if n == 0: return 0</code>) sorgt dafür, dass es irgendwann aufhört. Beispiel: welle(3) = 3 + welle(2) = 3 + 2 + welle(1) = 3 + 2 + 1 + welle(0) = 6.' },
   { test: /\breturn\b/, name: 'return', text: '<code>return x</code> beendet die Funktion und gibt x als Ergebnis zurück. Wer die Funktion aufgerufen hat, rechnet mit diesem Ergebnis weiter.' },
@@ -101,6 +106,13 @@ export function explainLine(raw) {
   if (!line) return '';
   if (line.startsWith('#')) return 'Ein Kommentar: Er ist nur für Menschen und wird nicht ausgeführt.';
   let m;
+  if ((m = line.match(/^class (\w+)\((\w+)\):$/))) return `Legt die Klasse ${c(m[1])} an. Sie <b>erbt</b> alles von ${c(m[2])}.`;
+  if ((m = line.match(/^class (\w+):$/))) return `Legt die Klasse ${c(m[1])} an: einen Bauplan für Objekte.`;
+  if ((m = line.match(/^def __init__\(self(?:, (.+))?\):$/))) return `Der Bauplan-Start: Läuft automatisch, wenn ein neues Objekt gebaut wird${m[1] ? `, und bekommt ${c(m[1])}` : ''}.`;
+  if ((m = line.match(/^def (\w+)\(self(?:, (.+))?\):$/))) return `Legt die Methode ${c(m[1])} an${m[2] ? ` mit dem Parameter ${c(m[2])}` : ''}. self ist das Objekt, zu dem sie gehört.`;
+  if ((m = line.match(/^self\.(\w+)\s*=\s*(.+)$/))) return `Das Objekt merkt sich ${c(m[2])} in seinem Attribut ${c('self.' + m[1])}.`;
+  if ((m = line.match(/^self\.(\w+)\s*(\+=|-=)\s*(.+)$/))) return `Ändert das Attribut ${c('self.' + m[1])} um ${c(m[3])}.`;
+  if ((m = line.match(/^(\w+)\s*=\s*([A-Z]\w*)\((.*)\)$/))) return `Baut ein neues Objekt der Klasse ${c(m[2])}${m[3] ? ` mit ${c(m[3])}` : ''} und nennt es ${c(m[1])}.`;
   if (line === 'import random') return 'Lädt das Modul <code>random</code>, damit der Code würfeln kann.';
   if ((m = line.match(/^return (.+)$/))) return `Beendet die Funktion und gibt ${c(m[1])} als Ergebnis zurück.`;
   if ((m = line.match(/^def (\w+)\((.+)\):$/))) return `Legt die Funktion ${c(m[1])} mit dem Parameter ${c(m[2])} an. Das Eingerückte darunter läuft erst, wenn sie aufgerufen wird.`;

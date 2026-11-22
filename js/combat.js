@@ -2,7 +2,7 @@
 import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES, ZEIT_PRO_ZUG } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { explainCode } from './explain.js';
-import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds, tutorialAct3 } from './tutorial.js';
+import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds, tutorialAct3, tutorialAct4 } from './tutorial.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
 import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
@@ -20,12 +20,7 @@ export function startCombat(encId, kind, done) {
   const run = game.run;
   C = {
     kind,
-    enemies: ENCOUNTERS[encId].map((id) => {
-      const e = ENEMIES[id];
-      const stufe = run.stufe ?? 0;
-      const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
-      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 }, intent: null, boss: e.boss, elite: e.elite, teilt: e.teilt };
-    }),
+    enemies: ENCOUNTERS[encId].map((id) => makeEnemy(id)),
     rule: null,       // Sonderregel (Boss immer, Elite ab Stufe 2)
     hpStart: run.hp,
     draw: shuffle(run.deck.map((c) => c.uid)),
@@ -67,9 +62,18 @@ export function startCombat(encId, kind, done) {
   runRelics('kampf_start');
   startTurn();
   if (!tutorialSeen('kampf')) setTimeout(tutorialCombat, 400);
+  else if ((run.act ?? 1) >= 4 && !tutorialSeen('akt4')) setTimeout(tutorialAct4, 400);
   else if ((run.act ?? 1) >= 3 && !tutorialSeen('akt3')) setTimeout(tutorialAct3, 400);
   else if ((run.act ?? 1) >= 2 && !tutorialSeen('akt2')) setTimeout(tutorialAct2, 400);
   else if (builds() && !tutorialSeen('builds')) setTimeout(tutorialBuilds, 400);
+}
+
+/** Ein Gegner aus seinem Bauplan in ENEMIES (mit Prüfungsstufe). */
+function makeEnemy(id) {
+  const e = ENEMIES[id];
+  const stufe = game.run.stufe ?? 0;
+  const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
+  return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 }, intent: null, boss: e.boss, elite: e.elite, teilt: e.teilt };
 }
 
 /** Ruft alle Relikte eines Zeitpunkts auf, in der Reihenfolge des Spielers. Jedes sieht die Werte nach dem vorigen. */
@@ -214,6 +218,7 @@ function updateIntents() {
     if ((v.mein_leben ?? e.hp) > e.hp) parts.push(`✚ heilt ${v.mein_leben - e.hp}`);
     for (const k of Object.keys(e.mem)) {
       if (k === 'fluch') { if (v.fluch) parts.push(`🐞 legt „${v.fluch}“ in dein Deck`); continue; }
+      if (k === 'beschwoere') { if (v.beschwoere && ENEMIES[v.beschwoere]) parts.push(`🛠 baut: ${ENEMIES[v.beschwoere].name}`); continue; }
       if (k !== 'runde' && JSON.stringify(v[k]) !== JSON.stringify(start[k])) parts.push(`▲ ${k} wird ${fmtVal(v[k])}`);
     }
     if (start.kristalle && JSON.stringify(v.kristalle) !== JSON.stringify(start.kristalle)) parts.push('💎 verändert deine Kristalle');
@@ -574,6 +579,7 @@ async function endTurn() {
   }
   for (const e of C.enemies) {
     if (e.hp <= 0) continue;
+    if (e.neu) { e.neu = false; continue; }
     if (e.st.frost >= 5) {
       // Eis: erstarrt, setzt diesen Zug aus
       e.st.frost -= 5;
@@ -635,6 +641,15 @@ function applyEnemyResult(e, start, v) {
     if (v[k] !== undefined) e.mem[k] = v[k];
   }
   setKristalle(v.kristalle);
+  // Akt 4: Eine Methode hat einen neuen Gegner gebaut
+  if (typeof e.mem.beschwoere === 'string' && e.mem.beschwoere) {
+    const id = e.mem.beschwoere;
+    e.mem.beschwoere = '';
+    if (ENEMIES[id] && C.enemies.filter((x) => x.hp > 0 && !x.gespalten).length < 4) {
+      C.enemies.push({ ...makeEnemy(id), neu: true });   // greift erst im nächsten Zug an
+      C.message = `${C.message ? `${C.message} ` : ''}🛠 ${esc(e.name)} baut ein neues Objekt: <b>${esc(ENEMIES[id].name)}</b>!`;
+    }
+  }
   if (v.fluch && !C.bugGiven) {
     C.bugGiven = true;   // höchstens eine Bug-Karte pro Kampf
     const bugId = BUG_BY_NAME[v.fluch];

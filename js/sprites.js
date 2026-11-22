@@ -134,6 +134,12 @@ const VARIANTEN = {
   rekursionsrabe: ['echofledermaus', 'grayscale(0.9) brightness(0.8)'],
   spiegelritter: ['waechter', 'hue-rotate(180deg) saturate(1.5) brightness(1.1)', true],
   spiegelkoenigin: ['eishexe', 'hue-rotate(250deg) saturate(1.6)', true],
+  ruestungsgolem: ['mischer', 'hue-rotate(40deg) saturate(1.3)'],
+  minigolem: ['mischer', 'hue-rotate(100deg) brightness(1.2)'],
+  schildknappe: ['waechter', 'hue-rotate(40deg) saturate(1.6)', true],
+  bogenschuetze: ['gaukler', 'hue-rotate(80deg) saturate(1.3)', true],
+  golemfabrik: ['rostwaechter', 'hue-rotate(20deg) saturate(1.8) brightness(1.1)'],
+  urklasse: ['verzweiger', 'hue-rotate(60deg) saturate(1.8)'],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {
