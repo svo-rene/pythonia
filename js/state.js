@@ -1,5 +1,5 @@
 // Spielstand: dauerhafte Daten (meta) und der laufende Run (run). Gespeichert im Browser.
-import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_COLS, RELICS, ACTS } from './data.js';
+import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_COLS, RELICS, ACTS, WORLDS } from './data.js';
 
 const KEY = 'zauberlehrling-v1';   // alter Projektname, bleibt, damit Spielstände erhalten bleiben
 
@@ -19,6 +19,8 @@ export function newMeta() {
     stufeMax: 0,        // höchste freigeschaltete Prüfungsstufe
     builds: true,       // die drei Grund-Spielweisen gibt es von Anfang an
     advanced: false,    // Eis, Kombo und zwei neue Figuren: nach dem ersten Sieg über Akt 1
+    actsDone: [],       // geschaffte Akte des Hauptpfads
+    worldsDone: [],     // geschaffte Nebenwelten
   };
 }
 
@@ -37,8 +39,12 @@ export function load() {
     game.meta.book = { ...newMeta().book, ...(data.meta?.book ?? {}) };
     game.meta.builds = true;
     if (game.meta.wins > 0) game.meta.advanced = true;   // wer schon gewonnen hat, hat Akt 1 geschafft
+    game.meta.actsDone ??= [];
+    game.meta.worldsDone ??= [];
+    if (game.meta.advanced && !game.meta.actsDone.includes(1)) game.meta.actsDone.push(1);
+    if (game.meta.wins > 0 && !game.meta.actsDone.includes(2)) game.meta.actsDone.push(2);
     game.run = data.run?.map ? data.run : null;   // Runs aus der alten Kartenversion verwerfen
-    if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; game.run.act ??= 1; }
+    if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; game.run.act ??= 1; game.run.world ??= 'haupt'; }
   } catch { /* kaputter Spielstand: neu anfangen */ }
 }
 
@@ -105,14 +111,15 @@ export function noteBook(kind, id) {
   if (!b[kind].includes(id)) b[kind].push(id);
 }
 
-export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
+export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0, act = 1, world = 'haupt' } = {}) {
   const hero = HEROES[heroId];
   const maxHp = hero.hp + (hasTalent('vit') ? 6 : 0);
   game.run = {
     seed: seedCode ? hashSeed(seedCode) : Math.floor(Math.random() * 2 ** 31),
     seedCode,
     stufe,
-    act: 1,
+    world,
+    act: world === 'haupt' ? act : WORLDS[world].level,
     // Mit freigeschalteten Spielweisen startet jede Figur mit ihrer Grundeigenschaft
     relics: hero.trait ? [hero.trait] : Object.keys(RELICS).filter((k) => RELICS[k].start === heroId),
     stats: newStats(),
@@ -144,14 +151,30 @@ export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
   game.run.deck = deck;
   for (const c of deck) noteBook('cards', c.id);
   for (const r of game.run.relics) noteBook('relics', r);
-  game.run.map = generateMap(1);
+  // Späterer Start: Ausgleich für jeden übersprungenen Akt (Geschenke, Konzepte, Karten, Gold)
+  for (let a = 2; a <= game.run.act; a++) {
+    const def = ACTS[a];
+    for (const id of def.geschenk ?? []) game.run.deck.push(makeCard(id));
+    if (def.konzept && !game.meta.concepts.includes(def.konzept)) game.meta.concepts.push(def.konzept);
+    game.run.gold += 40;
+    game.run.maxHp += 6;
+    game.run.hp += 6;
+    game.run.level += 1;
+    game.run.skipBonus = (game.run.skipBonus ?? 0) + 1;
+  }
+  game.run.map = generateMap(worldDef(game.run));
   game.meta.runs++;
   save();
 }
 
 /** Höhlenkarte wie bei Slay the Spire: 4 Pfade laufen von unten nach oben, ohne sich zu kreuzen. */
-function generateMap(act) {
-  const MAP_PLAN = ACTS[act].plan;
+/** Bauplan der aktuellen Welt: Akt des Hauptpfads oder Nebenwelt. */
+export function worldDef(run) {
+  return run.world && run.world !== 'haupt' ? WORLDS[run.world] : ACTS[run.act ?? 1];
+}
+
+function generateMap(def) {
+  const MAP_PLAN = def.plan;
   const rows = MAP_PLAN.length;
   const edges = new Set();
   const used = new Set();
@@ -196,7 +219,7 @@ function generateMap(act) {
       row.filter((n) => n.typ === 'schmiede').forEach((n, k) => { n.forge = plan.forges[k % plan.forges.length]; });
     }
   }
-  nodes.boss = { id: 'boss', r: rows, c: 2, typ: 'boss', enc: ACTS[act].boss, x: 50, y: 0 };
+  nodes.boss = { id: 'boss', r: rows, c: 2, typ: 'boss', enc: def.boss, x: 50, y: 0 };
   const edgeList = [...edges].map((e) => e.split('>'));
   for (const id of Object.keys(nodes)) if (nodes[id].r === rows - 1) edgeList.push([id, 'boss']);
   return { rows: rows + 1, nodes, edges: edgeList };
@@ -207,7 +230,7 @@ export function startNextAct() {
   const run = game.run;
   run.act++;
   const a = ACTS[run.act];
-  run.map = generateMap(run.act);
+  run.map = generateMap(a);
   run.pos = null;
   run.path = [];
   run.pending = null;

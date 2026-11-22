@@ -24,6 +24,7 @@ export function relicPool() {
   const builds = !!game.meta.builds;
   return Object.keys(RELICS).filter((k) => !RELICS[k].trait && !run.relics.includes(k)
     && (!RELICS[k].start || builds) && (!RELICS[k].build || builds) && (!RELICS[k].advanced || game.meta.advanced)
+    && (!RELICS[k].act || (run.act ?? 1) >= RELICS[k].act)
     && (!RELICS[k].unlock || game.meta.achievements.includes(RELICS[k].unlock)));
 }
 

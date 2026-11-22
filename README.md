@@ -12,6 +12,21 @@ py -m http.server 8765
 
 (im Projektordner starten) und dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nötig, weil Natter von jsDelivr geladen wird. Zum Hosten reicht jeder statische Webspace (z. B. GitHub Pages).
 
+## Weltkarte
+
+„Neuer Run“ öffnet die Weltkarte. Links der **Lernweg** (Hauptpfad), rechts zweigen **freie Welten** ab:
+
+| Lernweg | Thema | Stand | Freie Welten danach |
+| --- | --- | --- | --- |
+| Akt 1 · Höhle der Verzweigungen | Variablen, if/elif, for, while | fertig | 🎲 Würfelkasino (Zufall), ⚖ Blutarena (Waage) |
+| Akt 2 · Listengruben | Listen, Sortieren, Komplexität (Rechenzeit ⏱) | fertig | 🐺 Rudelwald (Beschwörer), 📚 Bibliothek (Archivar) |
+| Akt 3 · Spiegelturm | Funktionen, return, Rekursion | geplant | |
+| Akt 4 · Klassenfestung | Klassen, Objekte, Vererbung | geplant | |
+
+Ein geschaffter Akt öffnet den nächsten; man kann jeden offenen Akt direkt starten (mit Ausgleich: Karten, Gold, Leben, Level). Freie Welten sind kürzer (6 Ebenen + Boss), alle Figuren und Karten sind erlaubt, ihr Kartenset wird in den Belohnungen bevorzugt.
+
+**Komplexität (ab Akt 2):** Jeder Zug hat 30 Rechenschritte (`zeit`). Jede Handkarte zeigt ⏱, wie viele Schritte sie gerade bräuchte; reicht die Zeit nicht, bleibt sie auf der Hand. Gegenüberstellungen wie Paarblitz (zwei Schleifen, n²) und Rechenkunst (2 Schritte) oder Blasensortierer (Bubble Sort) und Ordnen (`sort()`) machen den Unterschied spürbar. Schmieden: Tauschzauber (Tausch mit `a, b = b, a`) und Bubble Sort selbst schreiben (`sort` versiegelt).
+
 ## Akte
 
 | Akt | Name | Thema | Besonderes |

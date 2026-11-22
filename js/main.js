@@ -1,10 +1,10 @@
 // Einstieg: Titel, Karte des Akts, Talentbaum, Run-Ende, Einstellungen.
-import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS, BUILDS, CARD_SETS } from './data.js';
+import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS, BUILDS, CARD_SETS, WORLDS } from './data.js';
 import { eventRoom } from './events.js';
 import { showRelics, relicCode, relicView } from './relics.js';
 import { explainCode } from './explain.js';
 import { tutorialMap, resetTutorials } from './tutorial.js';
-import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable, startNextAct } from './state.js';
+import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable, startNextAct, worldDef } from './state.js';
 import { heroSprite } from './sprites.js';
 import { loadNatter } from './natter.js';
 import { startCombat, rerenderCombat } from './combat.js';
@@ -66,17 +66,17 @@ function showTitle() {
     <p class="sub">Ein Deckbuilder, in dem deine Zauber Python sind.<br>Lies Code im Kampf, schreibe Code in der Schmiede, repariere Bugs.</p>
     <div class="menu">
       ${run ? '<button class="btn big" data-a="continue">Run fortsetzen</button>' : ''}
-      <button class="btn big ${run ? 'secondary' : ''}" data-a="new">Neuer Run</button>
+      <button class="btn big ${run ? 'secondary' : ''}" data-a="new">🗺 Neuer Run</button>
       <button class="btn secondary" data-a="talents">Talentbaum ${m.talentPoints ? `(${m.talentPoints} ${m.talentPoints === 1 ? "Punkt" : "Punkte"} frei)` : ''}</button>
       <button class="btn secondary" data-a="book">📖 Zauberbuch</button>
       <button class="btn secondary" data-a="howto">So funktioniert's</button>
       <button class="btn secondary" data-a="saves">Spielstand</button>
     </div>
-    <p class="hint small">Runs: ${m.runs} · Siege: ${m.wins} · Prototyp, Akt 1</p></div>`;
+    <p class="hint small">Runs: ${m.runs} · Siege: ${m.wins} · Akte geschafft: ${m.actsDone.length} von ${Object.keys(ACTS).length}</p></div>`;
   app().querySelector('[data-a="continue"]')?.addEventListener('click', () => { enterPendingOrMap(); });
   app().querySelector('[data-a="new"]').addEventListener('click', () => {
     if (run && !confirm('Den laufenden Run abbrechen und neu beginnen?')) return;
-    showHeroSelect();
+    showWorldMap();
   });
   app().querySelector('[data-a="talents"]').addEventListener('click', showTalents);
   app().querySelector('[data-a="howto"]').addEventListener('click', showHowto);
@@ -124,8 +124,9 @@ function showSaves() {
 }
 
 // ---------- Heldenauswahl ----------
-function showHeroSelect() {
+function showHeroSelect(start = { act: 1, world: 'haupt' }) {
   topbar();
+  const ziel = start.world === 'haupt' ? `Akt ${start.act}: ${ACTS[start.act].name}` : `${WORLDS[start.world].icon} ${WORLDS[start.world].name}`;
   const heroes = Object.entries(HEROES).map(([id, h]) => {
     const counts = {};
     for (const c of h.deck) counts[c] = (counts[c] ?? 0) + 1;
@@ -145,7 +146,7 @@ function showHeroSelect() {
   }).join('');
   app().innerHTML = `<div class="hero-select">
     <h2>Wähle deine Figur</h2>
-    <p class="hint">Jede Figur startet mit anderen Karten und einem eigenen Relikt.</p>
+    <p class="hint">Ziel: <b>${esc(ziel)}</b>${start.world === 'haupt' && start.act > 1 ? ' · Du startest mit Ausgleich für die übersprungenen Akte (Karten, Gold, Leben, Level).' : ''}</p>
     <div class="run-options">
       <label>🏫 Klassen-Code <input class="seed-input" maxlength="20" placeholder="leer = zufällig"></label>
       <button class="btn secondary small day-code">Tages-Code</button>
@@ -161,9 +162,41 @@ function showHeroSelect() {
   app().querySelectorAll('[data-hero]').forEach((b) => b.addEventListener('click', () => {
     const seedCode = app().querySelector('.seed-input').value.trim().toUpperCase();
     const stufe = Number(app().querySelector('.stufe-select')?.value ?? 0);
-    newRun(b.dataset.hero, { seedCode, stufe });
+    newRun(b.dataset.hero, { seedCode, stufe, ...start });
     showMap();
   }));
+  app().querySelector('.back').addEventListener('click', showWorldMap);
+}
+
+// ---------- Weltkarte: Hauptpfad und Nebenwelten ----------
+function showWorldMap() {
+  topbar();
+  const m = game.meta;
+  const acts = Object.entries(ACTS).map(([n, a]) => {
+    const num = Number(n);
+    const done = m.actsDone.includes(num);
+    const open = !a.bald && (num === 1 || m.actsDone.includes(num - 1));
+    const state = a.bald ? 'bald' : done ? 'done' : open ? 'open' : 'locked';
+    const sides = Object.entries(WORLDS).filter(([, w]) => w.nach === num).map(([id, w]) => {
+      const wopen = m.actsDone.includes(w.nach);
+      const wdone = m.worldsDone.includes(id);
+      return `<button class="world-node side ${wdone ? 'done' : wopen ? 'open' : 'locked'}" ${wopen ? `data-world="${id}"` : 'disabled'}>
+        <span class="wn-icon">${w.icon}</span><b>${esc(w.name)}${wdone ? ' ✔' : ''}</b>
+        <small>${wopen ? esc(w.text) : `🔒 nach Akt ${w.nach}`}</small></button>`;
+    }).join('');
+    return `<div class="world-row">
+      <button class="world-node main ${state}" ${open ? `data-act="${num}"` : 'disabled'}>
+        <span class="wn-icon">${num}</span><b>Akt ${num}: ${esc(a.name)}${done ? ' ✔' : ''}</b>
+        <small>${esc(a.thema)}${a.bald ? ' · kommt bald' : !open ? ` · 🔒 nach Akt ${num - 1}` : ''}</small></button>
+      ${sides ? `<div class="world-sides">${sides}</div>` : ''}</div>`;
+  }).join('<div class="world-link"></div>');
+  app().innerHTML = `<div class="worldmap">
+    <h2>🗺 Weltkarte</h2>
+    <p class="hint">Links der <b>Lernweg</b>: Jeder geschaffte Akt öffnet den nächsten. Rechts zweigen <b>freie Welten</b> ab, in denen du spielen kannst, wie du willst.</p>
+    <div class="world-list">${acts}</div>
+    <div class="row center"><button class="btn secondary back">Zurück</button></div></div>`;
+  app().querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => showHeroSelect({ act: Number(b.dataset.act), world: 'haupt' })));
+  app().querySelectorAll('[data-world]').forEach((b) => b.addEventListener('click', () => showHeroSelect({ act: WORLDS[b.dataset.world].level, world: b.dataset.world })));
   app().querySelector('.back').addEventListener('click', showTitle);
 }
 
@@ -197,7 +230,7 @@ function showMap() {
   }).join('');
   const legend = Object.entries(ROOM_INFO).map(([k, i]) => `<li><span class="mnode mini ${k}"><span>${i.icon}</span></span>${i.name}</li>`).join('');
   app().innerHTML = `<div class="map">
-    <div class="map-head"><h2>Akt ${run.act ?? 1}: ${esc(ACTS[run.act ?? 1].name)}</h2>
+    <div class="map-head"><h2>${run.world && run.world !== 'haupt' ? `${WORLDS[run.world].icon} ${esc(WORLDS[run.world].name)}` : `Akt ${run.act ?? 1}: ${esc(ACTS[run.act ?? 1].name)}`}</h2>
       <p class="hint">Wähle einen leuchtenden Raum. Du kannst nur den Linien nach oben folgen.</p></div>
     <div class="map-wrap">
       <div class="cave" style="height:${height}px">
@@ -236,7 +269,20 @@ function roomDone() {
   const run = game.run;
   run.pending = null;
   save();
-  if (run.pos === 'boss') { if (ACTS[(run.act ?? 1) + 1]) actDone(); else runOver(true); return; }
+  if (run.pos === 'boss') {
+    const m = game.meta;
+    if (run.world && run.world !== 'haupt') {
+      if (!m.worldsDone.includes(run.world)) m.worldsDone.push(run.world);
+      save();
+      runOver(true);
+      return;
+    }
+    if (!m.actsDone.includes(run.act)) m.actsDone.push(run.act);
+    save();
+    const next = ACTS[(run.act ?? 1) + 1];
+    if (next && !next.bald) actDone(); else runOver(true);
+    return;
+  }
   showMap();
 }
 
@@ -296,14 +342,14 @@ function runOver(won) {
   topbar();
   app().innerHTML = `<div class="title-screen">
     <h1>${won ? '♛ Pythonia ist bezwungen!' : 'Der Run ist vorbei'}</h1>
-    <p class="sub">${won ? `Du hast alle ${Object.keys(ACTS).length} Akte geschafft! Weitere Akte (Stapel, Warteschlangen und Klassen) folgen.` : `Du bist in Akt ${run.act ?? 1} gefallen. Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.`}</p>
+    <p class="sub">${won ? (run.world && run.world !== 'haupt' ? `${esc(WORLDS[run.world].name)} ist geschafft!` : `Du hast Akt ${run.act} geschafft! Auf der Weltkarte geht es weiter, sobald der nächste Akt fertig ist.`) : `Du bist in Akt ${run.act ?? 1} gefallen. Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.`}</p>
     <p>+${points} Talentpunkt${points === 1 ? '' : 'e'}${!won && run.elitesWon ? ` (1 + ${run.elitesWon} für Elite-Siege)` : ''}</p>
     <p class="hint">${run.stats?.rooms ?? run.path.length} ${(run.stats?.rooms ?? run.path.length) === 1 ? 'Raum' : 'Räume'} geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst${run.seedCode ? ` · Klassen-Code <b>${esc(run.seedCode)}</b>` : ''}${run.stufe ? ` · Stufe ${run.stufe}` : ''}</p>
     ${newStufe ? `<p class="good-note">⚔ Prüfungsstufe ${meta.stufeMax} freigeschaltet: ${esc(STUFEN[meta.stufeMax])}</p>` : ''}
     ${runReview(run, won)}
     <div class="menu"><button class="btn big" data-a="talents">Zum Talentbaum</button><button class="btn secondary" data-a="new">Neuer Run</button></div></div>`;
   app().querySelector('[data-a="talents"]').addEventListener('click', showTalents);
-  app().querySelector('[data-a="new"]').addEventListener('click', showHeroSelect);
+  app().querySelector('[data-a="new"]').addEventListener('click', showWorldMap);
 }
 
 /** Rückblick wie bei Hades: Was war dein bester Zauber, was sagt der Meister dazu? */

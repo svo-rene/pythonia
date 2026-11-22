@@ -33,6 +33,7 @@ const VARS = {
   gegner_frost: 'eine Liste mit dem Frost aller Gegner',
   kombo: 'wie viele Karten du in diesem Zug schon gespielt hast',
   wunden: 'wie viel Leben dir gerade fehlt (max_leben minus leben)',
+  zeit: 'deine Rechenzeit: so viele Schritte darf dein Code in diesem Zug noch machen',
   max_leben: 'dein höchstmögliches Leben',
   begleiter: 'deine Begleiter-Liste: Jeder greift am Ende deines Zugs mit seinem Wert an',
   ablage: 'die Namen der Karten in deinem Ablagestapel, die zuletzt abgelegte steht hinten',

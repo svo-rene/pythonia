@@ -442,3 +442,25 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
 .stat.frost { background: #14405a; color: #bff0ff; }
 .hero-pick.locked { opacity: 0.5; filter: grayscale(0.8); cursor: not-allowed; }
 .kr.bg { background: linear-gradient(#ffd9a8, #c98a4b); color: #3a1f05; box-shadow: 0 0 8px rgba(255, 180, 100, 0.5); }
+
+/* Weltkarte */
+.worldmap { max-width: 900px; margin: 0 auto; }
+.world-list { display: flex; flex-direction: column; gap: 0; margin: 14px 0; }
+.world-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: center; }
+.world-link { width: 4px; height: 22px; background: var(--accent); margin-left: 40px; border-radius: 2px; opacity: 0.6; }
+.world-sides { display: flex; flex-direction: column; gap: 8px; border-left: 3px dashed var(--line); padding-left: 14px; }
+.world-node { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; color: var(--text); font: inherit; cursor: pointer; }
+.world-node small { grid-column: 2; color: var(--muted); font-size: 0.82em; }
+.wn-icon { grid-row: span 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 1.3em; background: var(--bg2); }
+.world-node.main .wn-icon { background: linear-gradient(#ffe08a, #e09a2a); color: #2a1800; }
+.world-node.open { border-color: var(--accent); box-shadow: 0 0 14px rgba(255, 204, 77, 0.35); }
+.world-node.side.open { border-color: var(--accent2); box-shadow: 0 0 12px rgba(126, 224, 195, 0.3); }
+.world-node.done { border-color: var(--good); }
+.world-node.locked, .world-node.bald { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 800px) { .world-row { grid-template-columns: 1fr; } .world-sides { border-left: 0; padding-left: 0; } }
+
+/* Rechenzeit (Komplexität) */
+.card[data-steps] { position: relative; }
+.card[data-steps]::before { content: '⏱ ' attr(data-steps); position: absolute; top: 6px; right: 8px; font-size: 11px; font-weight: 700; color: var(--accent2); background: var(--bg2); border-radius: 6px; padding: 0 5px; }
+.card.slow::before { color: var(--bad); }
+.zeit-badge { border-color: var(--accent2) !important; }

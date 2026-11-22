@@ -195,6 +195,7 @@ export function tutorialAct2() {
     { sel: '.sel-bar .play', text: 'Ausspielen!', click: true },
     { sel: '.kristalle', text: 'Schau auf die Liste …', until: () => idle() },
     { sel: '.kristalle', text: 'Da ist der Kristall! <b>Kristallwurf</b> nimmt mit <code>pop()</code> den <b>letzten</b> Kristall heraus und wirft ihn. Und Vorsicht: Manche Gegner stehlen Kristalle oder drehen deine Liste um.' },
+    { sel: '.zeit-badge', text: '⏱ <b>Rechenzeit:</b> In den Listengruben darf dein Code pro Zug nur begrenzt viele Schritte machen. Jede Karte zeigt oben rechts, wie viele sie braucht. Schleifen kosten viele Schritte, zwei ineinander besonders viele!' },
   ]);
 }
 

@@ -777,3 +777,119 @@ Object.assign(CARDS, {
     code: 'def doppelt(wert, mal):\n    if mal == 0:\n        return wert\n    return doppelt(wert * 2, mal - 1)\nblock += doppelt(2, 2)', text: 'doppelt(2, 2) verdoppelt zweimal: 2 → 4 → 8 Block.',
     up: { code: 'def doppelt(wert, mal):\n    if mal == 0:\n        return wert\n    return doppelt(wert * 2, mal - 1)\nblock += doppelt(3, 2)', text: 'doppelt(3, 2) = 12 Block.' } },
 });
+
+// =====================================================================
+// WELTKARTE: Hauptpfad (Lernweg) und freie Nebenwelten
+// Hauptpfad: Akt 1 Grundlagen → Akt 2 Listen, Sortieren, Komplexität → Akt 3 Rekursion → Akt 4 OOP
+// Nebenwelten zweigen ab, sobald ein Akt geschafft ist. Dort ist alles erlaubt; ihr Kartenset kommt häufiger.
+// =====================================================================
+Object.assign(ACTS, {
+  3: { name: 'Der Spiegelturm', thema: 'Funktionen, return und Rekursion', bald: true },
+  4: { name: 'Die Klassenfestung', thema: 'Klassen, Objekte und Vererbung (OOP)', bald: true },
+});
+ACTS[2].thema = 'Listen, Sortieren und Komplexität';
+
+Object.assign(ENEMIES, {
+  croupier: { name: 'Der Croupier', hp: 95, boss: true,
+    code: 'import random\nwurf = random.randint(1, 6)\nif wurf == 6:\n    leben -= 20\nelse:\n    leben -= wurf * 2' },
+  gladiator: { name: 'Der Gladiator', hp: 100, boss: true,
+    code: 'if mein_leben < 40:\n    leben -= 14\nelse:\n    leben -= 8' },
+  wolfsmutter: { name: 'Die Wolfsmutter', hp: 120, boss: true, mem: { welpen: [] },
+    code: 'welpen.append(3)\nleben -= sum(welpen)' },
+  bibliothekar: { name: 'Der Bibliothekar', hp: 130, boss: true, mem: { seiten: 0 },
+    code: 'seiten += 1\nif seiten % 3 == 0:\n    kristalle = []\nleben -= 4 * seiten' },
+});
+Object.assign(ENCOUNTERS, { croupier: ['croupier'], gladiator: ['gladiator'], wolfsmutter: ['wolfsmutter'], bibliothekar: ['bibliothekar'] });
+
+const SIDE_PLAN_1 = [
+  { typ: 'kampf', pool: ['tinte', 'rost'] },
+  { zufall: { kampf: 2, raetsel: 1, haendler: 1 }, pool: ['tinte', 'rost', 'teufel'] },
+  { zufall: { kampf: 2, elite: 1, rast: 1 }, pool: ['teufel', 'biene_tinte'] },
+  { zufall: { haendler: 1, raetsel: 1, rast: 1 } },
+  { zufall: { kampf: 2, elite: 1 }, pool: ['biene_tinte', 'rost_biene'] },
+  { typ: 'rast' },
+];
+const SIDE_PLAN_2 = [
+  { typ: 'kampf', pool: ['echo', 'dieb'] },
+  { zufall: { kampf: 2, raetsel: 1, haendler: 1 }, pool: ['echo', 'dieb', 'wurm'] },
+  { zufall: { kampf: 2, elite: 1, rast: 1 }, pool: ['wurm', 'echo_dieb'], elite: 'hydra' },
+  { zufall: { haendler: 1, raetsel: 1, rast: 1 } },
+  { zufall: { kampf: 2, elite: 1 }, pool: ['echo_dieb', 'wurm_echo'], elite: 'hydra' },
+  { typ: 'rast' },
+];
+
+export const WORLDS = {
+  kasino: { name: 'Das Würfelkasino', icon: '🎲', nach: 1, level: 1, set: 'zufall', plan: SIDE_PLAN_1, boss: 'croupier',
+    text: 'Glück und Wahrscheinlichkeit. Zufallskarten tauchen hier besonders oft auf. Der Croupier würfelt selbst.' },
+  arena: { name: 'Die Blutarena', icon: '⚖', nach: 1, level: 1, set: 'waage', plan: SIDE_PLAN_1, boss: 'gladiator',
+    text: 'Wer viel einsteckt, teilt viel aus. Waage-Karten tauchen hier besonders oft auf.' },
+  rudel: { name: 'Der Rudelwald', icon: '🐺', nach: 2, level: 2, set: 'beschwoerer', plan: SIDE_PLAN_2, boss: 'wolfsmutter',
+    text: 'Begleiter und Listen. Beschwörer-Karten tauchen hier besonders oft auf.' },
+  bibliothek: { name: 'Die Bibliothek', icon: '📚', nach: 2, level: 2, set: 'archivar', plan: SIDE_PLAN_2, boss: 'bibliothekar',
+    text: 'Ablage, Ziehstapel und count(). Archivar-Karten tauchen hier besonders oft auf.' },
+};
+
+// =====================================================================
+// AKT 2 ERGÄNZT: Sortieren selbst bauen und Komplexität (Rechenzeit)
+// Ab Akt 2 hat jeder Zug ein Budget an Rechenschritten (Variable zeit). Jede Karte zeigt ⏱, wie viele Schritte sie braucht.
+// =====================================================================
+export const ZEIT_PRO_ZUG = 30;
+
+Object.assign(CARDS, {
+  paarblitz: { act: 2, name: 'Paarblitz', cost: 1, concept: 'for', type: 'angriff', target: true,
+    code: 'for a in gegner_leben:\n    for b in gegner_leben:\n        ziel_leben -= 2', text: 'Für jedes Paar von Gegnern 2 Schaden. Zwei Schleifen ineinander: Die Schritte wachsen quadratisch!',
+    up: { code: 'for a in gegner_leben:\n    for b in gegner_leben:\n        ziel_leben -= 3', text: 'Für jedes Paar 3 Schaden (quadratisch viele Schritte).' } },
+  rechenkunst: { act: 2, name: 'Rechenkunst', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'n = len(gegner_leben)\nziel_leben -= 2 * n * n', text: 'Gleicher Schaden wie Paarblitz, aber ausgerechnet statt gezählt: nur 2 Schritte.',
+    up: { code: 'n = len(gegner_leben)\nziel_leben -= 3 * n * n', text: '3 · n · n Schaden in 2 Schritten.' } },
+  halbierer: { act: 2, name: 'Halbierer', cost: 1, concept: 'while', type: 'angriff', target: true,
+    code: 'wert = ziel_leben\nschritte = 0\nwhile wert > 1:\n    wert //= 2\n    schritte += 1\nziel_leben -= 3 * schritte', text: 'Halbiert das Leben des Ziels in Gedanken, bis 1 übrig ist, und zählt mit. Wenige Schritte, auch bei viel Leben.',
+    up: { code: 'wert = ziel_leben\nschritte = 0\nwhile wert > 1:\n    wert //= 2\n    schritte += 1\nziel_leben -= 4 * schritte', text: '4 Schaden pro Halbierung.' } },
+  blasensortierer: { act: 2, name: 'Blasensortierer', cost: 0, concept: 'for', type: 'skill',
+    code: 'for i in range(len(kristalle)):\n    for j in range(len(kristalle) - 1):\n        if kristalle[j] > kristalle[j + 1]:\n            kristalle[j], kristalle[j + 1] = kristalle[j + 1], kristalle[j]',
+    text: 'Sortiert die Kristalle selbst (Bubble Sort). Kostet keine Energie, aber viele Rechenschritte. Vergleiche mit Ordnen (sort).',
+    up: { code: 'for i in range(len(kristalle)):\n    for j in range(len(kristalle) - 1 - i):\n        if kristalle[j] > kristalle[j + 1]:\n            kristalle[j], kristalle[j + 1] = kristalle[j + 1], kristalle[j]', text: 'Schlauerer Bubble Sort: Der hintere, schon sortierte Teil wird übersprungen.' } },
+});
+
+Object.assign(RELICS, {
+  taktgeber: { name: 'Taktgeber', icon: '⏲', hook: 'zug_start', code: 'zeit += 10', act: 2 },
+});
+
+Object.assign(FORGES, {
+  tauschzauber: {
+    titel: 'Tauschzauber', stufe: 'leicht', modus: 'parsons', konzepte: ['if', 'liste'],
+    auftrag: 'Steht der erste Kristall (Index 0) weiter vorn, obwohl er größer ist als der zweite (Index 1), tausche die beiden. Sonst bleibt alles, wie es ist.',
+    zeilen: ['if kristalle[0] > kristalle[1]:', '    kristalle[0], kristalle[1] = kristalle[1], kristalle[0]'],
+    falsch: ['    kristalle[0] = kristalle[1]'],
+    pruefe: ['kristalle'],
+    tests: [{ kristalle: [7, 3] }, { kristalle: [2, 9] }, { kristalle: [5, 5, 1] }],
+    hinweise: ['Erst prüfen, dann tauschen. Getauscht wird nur, wenn die Reihenfolge falsch ist.', 'kristalle[0] = kristalle[1] überschreibt den ersten Wert, er geht verloren! Python kann zwei Werte gleichzeitig tauschen.', 'a, b = b, a tauscht zwei Werte in einer Zeile.'],
+    karte: { name: 'Tauschzauber', cost: 0, type: 'skill', text: 'Deine geschmiedete Karte: bringt die ersten beiden Kristalle in die richtige Reihenfolge.' },
+  },
+  blasenschmiede: {
+    titel: 'Bubble Sort', stufe: 'schwer', modus: 'frei', konzepte: ['for', 'if', 'liste'], maxZeilen: 4, versiegelt: ['sort', 'sorted'],
+    auftrag: 'Sortiere die Liste kristalle aufsteigend, ohne sort() oder sorted(): Gehe immer wieder durch die Liste und tausche zwei Nachbarn, wenn der linke größer ist als der rechte.',
+    vorlage: '# Variable: kristalle (Liste)\n',
+    loesung: 'for i in range(len(kristalle)):\n    for j in range(len(kristalle) - 1):\n        if kristalle[j] > kristalle[j + 1]:\n            kristalle[j], kristalle[j + 1] = kristalle[j + 1], kristalle[j]',
+    zeilen: ['for i in range(len(kristalle)):', '    for j in range(len(kristalle) - 1):', '        if kristalle[j] > kristalle[j + 1]:', '            kristalle[j], kristalle[j + 1] = kristalle[j + 1], kristalle[j]'],
+    falsch: ['    for j in range(len(kristalle)):'],
+    pruefe: ['kristalle'],
+    tests: [{ kristalle: [5, 2, 8, 1] }, { kristalle: [3, 3, 1] }, { kristalle: [] }, { kristalle: [9, 7, 5, 3, 1] }],
+    hinweise: ['Ein Durchgang vergleicht jedes Nachbarpaar: kristalle[j] und kristalle[j + 1]. Danach steht der größte Wert hinten.', 'Ein Durchgang reicht nicht. Wiederhole ihn so oft, wie die Liste lang ist (äußere Schleife).', 'Achtung: j darf nur bis len(kristalle) - 2 laufen, sonst gibt es kristalle[j + 1] nicht. Darum range(len(kristalle) - 1).'],
+    karte: { name: 'Eigener Sortierer', cost: 0, type: 'skill', text: 'Deine geschmiedete Karte: dein eigener Bubble Sort für die Kristalle.' },
+  },
+});
+FORGE_LEVEL.tauschzauber = 'leicht';
+FORGE_LEVEL.blasenschmiede = 'schwer';
+
+Object.assign(RIDDLES, {
+  doppelschleife: { concept: 'for', var: 'z', code: 'z = 0\nfor i in range(3):\n    for j in range(4):\n        z += 1',
+    erklaerung: 'Die innere Schleife läuft 4-mal, und das 3-mal: 3 · 4 = 12. Zwei Schleifen ineinander multiplizieren die Schritte.' },
+  dreieck: { concept: 'for', var: 'z', code: 'z = 0\nfor i in range(4):\n    for j in range(i):\n        z += 1',
+    erklaerung: 'Für i = 0, 1, 2, 3 läuft die innere Schleife 0, 1, 2 und 3-mal. Zusammen 0 + 1 + 2 + 3 = 6.' },
+});
+
+// Schmieden in Akt 2: Sortieren selbst bauen
+MAP_PLAN_2[2].forges = ['stapler', 'tauschzauber', 'sortierschuss'];
+MAP_PLAN_2[7].forges = ['blasenschmiede', 'durchzaehlen', 'zwillinge'];
+ACTS[2].intro = 'In den Listengruben sammelst du Kristalle in einer Liste (append, pop, sort). Neu: Jeder Zug hat nur begrenzte Rechenzeit. Jede Karte zeigt ⏱, wie viele Schritte sie braucht. Zwei Schleifen ineinander werden schnell zu teuer!';

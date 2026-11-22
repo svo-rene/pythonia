@@ -65,7 +65,7 @@ async function combatTurn() {
   const C = dbg.C;
   if (!C || C.busy || $('.end-turn')?.disabled) return;
   const hand = [...C.hand];
-  const affordable = hand.filter((u) => dbg.cardCost(dbg.cardDef(dbg.cardByUid(u))) <= C.energie);
+  const affordable = hand.filter((u) => dbg.cardCost(dbg.cardDef(dbg.cardByUid(u))) <= C.energie && (C.zeit === undefined || dbg.estimateSteps(u) <= C.zeit));
   if (!B.fight) return;
   if (B.mode === 'gut') {
     // Ziel: das Lebewesen mit dem wenigsten Leben
@@ -311,7 +311,7 @@ function mapStep() {
 }
 
 // ---------- Hauptschleife ----------
-export async function start(mode = 'gut', hero = 'magierin', { builds = null } = {}) {
+export async function start(mode = 'gut', hero = 'magierin', { builds = null, act = 1, world = null } = {}) {
   Object.assign(B, { log: [], summary: null, running: true, mode, fights: [], rooms: [], fight: null, done: {} });
   game.meta.settings.tempo = 'turbo';
   if (builds !== null) game.meta.advanced = builds;
@@ -323,6 +323,8 @@ export async function start(mode = 'gut', hero = 'magierin', { builds = null } =
   document.querySelector('#topbar .brand')?.click();
   await sleep(300);
   $('[data-a="new"]').click();
+  await sleep(300);
+  (world ? $(`[data-world="${world}"]`) : $(`[data-act="${act}"]`)).click();
   await sleep(300);
   $(`[data-hero="${hero}"]`).click();
   log('start', `${mode} mit ${hero}`);

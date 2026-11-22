@@ -125,11 +125,15 @@ export const BILDER = {
 
 // Akt-2-Gegner nutzen vorerst umgefärbte Bilder (eigene Meshy-Figuren können später folgen).
 const VARIANTEN = {
+  croupier: ['gaukler', 'hue-rotate(200deg) saturate(1.2)', true],
+  gladiator: ['waechter', 'hue-rotate(330deg) saturate(2) sepia(0.3)', true],
+  wolfsmutter: ['zahlenhydra', 'hue-rotate(80deg) saturate(1.2)'],
+  bibliothekar: ['orakel', 'hue-rotate(60deg) sepia(0.6)', true],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {
   const v = VARIANTEN[id];
-  if (v) return `<img class="sprite bild" src="${BILDER[v[0]]}" alt="" draggable="false" style="filter:${v[1]} ${SHADOW}">`;
+  if (v) return `<img class="sprite bild" src="${BILDER[v[0]]}" alt="" draggable="false" style="filter:${v[1]} ${SHADOW}${v[2] ? ';transform:scaleX(-1)' : ''}">`;
   return `<img class="sprite bild" src="${BILDER[id]}" alt="" draggable="false">`;
 };
 

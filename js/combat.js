@@ -1,5 +1,5 @@
 // Kartenkampf: Karten sind Python, Gegnerabsichten sind Python, beides läuft sichtbar Zeile für Zeile.
-import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES } from './data.js';
+import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES, ZEIT_PRO_ZUG } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { explainCode } from './explain.js';
 import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds } from './tutorial.js';
@@ -129,6 +129,7 @@ function drawCards(n) {
 function startTurn() {
   C.turn++;
   C.combo = 0;
+  if ((game.run.act ?? 1) >= 2) C.zeit = ZEIT_PRO_ZUG;   // Komplexität: Rechenschritte pro Zug
   C.energie = 3 + (C.turn === 1 && hasSkill('fruehstart') ? 1 : 0);
   C.maxEnergie = Math.max(3, C.energie);
   if (C.turn > 1) C.block = hasTalent('frost2') ? Math.floor(C.block / 2) : 0;
@@ -166,6 +167,8 @@ function enemyVars(e) {
   return { mein_leben: e.hp, leben: game.run.hp, block: C.block, ...(game.run.act >= 2 ? { kristalle: [...C.kristalle] } : {}), ...e.mem };
 }
 
+// Gleicher Startwert für Absicht und echten Zug: Würfelt ein Gegner, zeigt die Absicht den echten Wurf.
+const enemySeed = (e) => C.turn * 97 + C.enemies.indexOf(e) + 1;
 const fmtVal = (v) => (Array.isArray(v) ? `[${v.join(', ')}]` : String(v));
 
 /** Absicht vorab berechnen (Probelauf mit dem aktuellen Zustand). */
@@ -174,7 +177,7 @@ function updateIntents() {
     if (e.hp <= 0) { e.intent = null; continue; }
     if (e.st.frost >= 5) { e.intent = { dmg: 0, summary: '❄ erstarrt: setzt diesen Zug aus' }; continue; }
     const start = enemyVars(e);
-    const r = runPy(e.code, start, { trace: false });
+    const r = runPy(e.code, start, { trace: false, seed: enemySeed(e) });
     const v = r.vars;
     const parts = [];
     let dmg = Math.max(0, start.leben - (v.leben ?? start.leben));
@@ -205,7 +208,7 @@ function baseVars() {
     ziel_angriff: t?.intent ? t.intent.dmg : 0,
     gegner_leben: live.map((e) => e.hp),
     gegner_angriff: live.map((e) => e.intent?.dmg ?? 0),
-    ...(game.run.act >= 2 ? { kristalle: [...C.kristalle], begleiter: [...C.begleiter] } : {}),
+    ...(game.run.act >= 2 ? { kristalle: [...C.kristalle], begleiter: [...C.begleiter], zeit: C.zeit ?? ZEIT_PRO_ZUG } : {}),
     wunden: game.run.maxHp - game.run.hp,
     ...(builds() ? {
       dornen: C.dornen,
@@ -314,6 +317,17 @@ async function playCard(uid, prediction = null, eingabe = null) {
   const runCode = def.eingabe ? withInput(def.code, eingabe) : def.code;
   const res = runPy(runCode, start, { seed: Math.floor(rng() * 1e9) + 1, natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
 
+  // Komplexität: Reicht die Rechenzeit dieses Zugs?
+  const steps = res.steps.length;
+  if ((game.run.act ?? 1) >= 2 && steps > C.zeit) {
+    C.energie += cost;
+    C.hand.push(uid);
+    C.busy = false;
+    C.message = `⏱ <b>Zu wenig Rechenzeit!</b> ${esc(def.name)} bräuchte ${steps} Schritte, du hast in diesem Zug nur noch ${C.zeit}. Die Karte bleibt auf der Hand.`;
+    render();
+    return;
+  }
+
   // Vorhersage auswerten, bevor die Animation läuft
   let mult = 1;
   let predictionNote = '';
@@ -352,6 +366,7 @@ async function playCard(uid, prediction = null, eingabe = null) {
   trackStats(def, start, res.vars, mult, prediction);
   applyCardResult(start, res.vars, mult);
   takeFromPiles(start, res.vars, discardBefore);
+  if ((game.run.act ?? 1) >= 2) C.zeit = Math.max(0, C.zeit - steps);
   C.combo++;
   if (C.rule === 'staerke_null') C.staerke = realStaerke + num(res.vars.staerke, 0);
   fixTarget();
@@ -415,6 +430,19 @@ function takeFromPiles(start, v, discardBefore) {
   for (let i = 0; i < fromDraw && C.draw.length; i++) C.hand.push(C.draw.pop());
 }
 
+/** Wie viele Schritte würde diese Karte gerade brauchen? (Schätzung mit den aktuellen Werten) */
+function estimateSteps(uid) {
+  const def = cardDef(cardByUid(uid));
+  const start = baseVars();
+  start.hand = C.hand.filter((u) => u !== uid).map((u) => cardDef(cardByUid(u)).name);
+  if (/\b(ablage|ziehstapel)\b/.test(def.code)) {
+    start.ablage = C.discard.map((u) => cardDef(cardByUid(u)).name);
+    start.ziehstapel = C.draw.map((u) => cardDef(cardByUid(u)).name);
+  }
+  const code = def.eingabe ? withInput(def.code, inputRange(def).min) : def.code;
+  return runPy(code, start, { seed: 1, natives: { ziehe: () => {} } }).steps.length;
+}
+
 function setKristalle(list) {
   if (Array.isArray(list)) C.kristalle = list.map((x) => num(x, 0)).slice(0, 12);
 }
@@ -428,6 +456,7 @@ function applyCardResult(start, v, mult) {
   C.energie = Math.max(0, num(v.energie, start.energie));
   C.staerke = num(v.staerke, start.staerke);
   setKristalle(v.kristalle);
+  if (typeof v.zeit === 'number' && C.zeit !== undefined) C.zeit = Math.max(0, num(v.zeit, C.zeit));
   if (Array.isArray(v.begleiter)) C.begleiter = v.begleiter.map((x) => Math.max(0, num(x, 0))).slice(0, 6);
   if (builds()) {
     C.dornen = Math.max(0, num(v.dornen, start.dornen ?? 0));
@@ -527,7 +556,7 @@ async function endTurn() {
       continue;
     }
     const start = enemyVars(e);
-    const res = runPy(e.code, start);
+    const res = runPy(e.code, start, { seed: enemySeed(e) });
     let prev = start;
     for (const s of res.steps.slice(0, 40)) {
       C.view = { kind: 'enemy', enemy: e, name: e.name, code: e.code, line: s.line, vars: s.vars, prev, start };
@@ -666,7 +695,9 @@ function render() {
     const def = cardDef(cardByUid(uid));
     const cost = def.cost === 'X' ? 'X' : cardCost(def);
     const cant = def.cost !== 'X' && cost > C.energie;
-    return cardView(def, { lesehilfe: lese, cls: `${cant ? 'cant' : ''} ${C.selected === uid ? 'selected' : ''} ${C.inspired === uid ? 'inspired' : ''}`, extra: `data-card="${uid}"`, cost });
+    const st = (game.run.act ?? 1) >= 2 ? estimateSteps(uid) : null;
+    const slow = st !== null && st > C.zeit;
+    return cardView(def, { lesehilfe: lese, cls: `${cant || slow ? 'cant' : ''} ${slow ? 'slow' : ''} ${C.selected === uid ? 'selected' : ''} ${C.inspired === uid ? 'inspired' : ''}`, extra: `data-card="${uid}"${st !== null ? ` data-steps="${st}"` : ''}`, cost });
   }).join('');
 
   const heroName = HEROES[run.hero]?.name ?? 'Held';
@@ -683,6 +714,7 @@ function render() {
             <div class="energy-orb" title="Energie"><b>${energieNow}</b><small>/${C.maxEnergie}</small></div>
             <div class="badges">
               <span class="badge" title="Stärke">💪 ${staerkeNow}</span>
+              ${(run.act ?? 1) >= 2 ? `<span class="badge zeit-badge" title="Rechenzeit: so viele Schritte darf dein Code in diesem Zug noch machen">⏱ ${C.zeit}</span>` : ''}
               ${builds() && C.dornen ? `<span class="badge" title="Dornen: Wer dich angreift, bekommt so viel Schaden zurück">🌵 ${C.dornen}</span>` : ''}
               <span class="badge" title="Chance auf eine Eingebung pro Zug">🔮 ${Math.round(eingebungChance() * 100)} %</span>
             </div>
@@ -830,5 +862,5 @@ export function rerenderCombat() { if (C) render(); }
 
 /** Nur für Tests (tools/spielbot.js): Einblick in den laufenden Kampf. */
 export function _debugCombat() {
-  return { C, baseVars, cardDef, cardByUid, cardCost, metricFor, metricValue, withInput, inputRange, enemyDeltas, alive };
+  return { C, baseVars, cardDef, cardByUid, cardCost, metricFor, metricValue, withInput, inputRange, enemyDeltas, alive, estimateSteps };
 }

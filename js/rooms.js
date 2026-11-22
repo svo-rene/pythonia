@@ -1,5 +1,5 @@
 // Räume außerhalb des Kampfs: Schmiede, Debug-Raum, Händler, Rastplatz, Belohnung, Level-up.
-import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS, HEROES, BUILDS } from './data.js';
+import { CARDS, BUGS, FORGES, CONCEPTS, RUN_SKILLS, EXP_PER_LEVEL, EVOLUTIONS, HEROES, BUILDS, WORLDS } from './data.js';
 import { game, save, shuffle, pick, rng, cardDef, hasTalent, makeCard, conceptUnlocked, noteBook } from './state.js';
 import { relicPool, relicView, gainRelic, offerRelic, unlockAchievement } from './relics.js';
 import { tutorialForge, tutorialDebug, tutorialShop, tutorialRest, tutorialReward } from './tutorial.js';
@@ -500,7 +500,10 @@ export function rewardScreen(kind, done) {
   // Mit Spielweisen: eine Karte passt immer zur Spielweise der eigenen Figur
   const pool = shuffle(cardPool());
   const own = game.meta.builds ? pool.find((id) => CARDS[id].build && CARDS[id].build === HEROES[run.hero]?.build) : null;
-  const choices = (own ? [own, ...pool.filter((id) => id !== own)] : pool).slice(0, n);
+  const worldSet = run.world && run.world !== 'haupt' ? WORLDS[run.world].set : null;
+  const setCards = worldSet ? pool.filter((id) => CARDS[id].set === worldSet).slice(0, 2) : [];
+  const first = [...setCards, own].filter(Boolean);
+  const choices = [...first, ...pool.filter((id) => !first.includes(id))].slice(0, Math.max(n, first.length + 1));
   save();
   app().innerHTML = `<div class="room reward">
     <h2>Sieg!</h2><p>+${gold} Gold (jetzt 💰 ${run.gold}) · +${kind === 'elite' ? 25 : 10} EXP${kind === 'elite' ? ' · Danach wählst du ein Relikt.' : ''}</p>
