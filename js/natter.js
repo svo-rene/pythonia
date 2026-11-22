@@ -35,7 +35,7 @@ function errorInfo(errJson) {
  * Führt Python aus.
  * @param {string} code
  * @param {Record<string, any>} vars  Startwerte (JS: Zahlen, Strings, Arrays)
- * @param {{ trace?: boolean, natives?: Record<string, Function> }} [opts]
+ * @param {{ trace?: boolean, natives?: Record<string, Function>, seed?: number }} [opts]  seed: für random
  * @returns {{ ok: boolean, vars: Record<string, any>, steps: {line:number, vars:Record<string, any>}[], error: any, tooLong: boolean }}
  */
 export function runPy(code, vars, opts = {}) {
@@ -53,7 +53,7 @@ export function runPy(code, vars, opts = {}) {
     globals[name] = new N.PyBuiltin(name);
     natives[name] = (ctx, args) => { fn(...args.map(fromPy)); return null; };
   }
-  const vm = new N.VM(prog, { globals, natives, seed: 1 });
+  const vm = new N.VM(prog, { globals, natives, seed: opts.seed ?? 1 });
   const snapshot = () => {
     const out = {};
     for (const k of Object.keys(vars)) out[k] = fromPy(vm.globals.get(k) ?? vm.predef.get(k));

@@ -1,5 +1,5 @@
 // Einstieg: Titel, Karte des Akts, Talentbaum, Run-Ende, Einstellungen.
-import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS, BUILDS } from './data.js';
+import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS, BUILDS, CARD_SETS } from './data.js';
 import { eventRoom } from './events.js';
 import { showRelics, relicCode, relicView } from './relics.js';
 import { explainCode } from './explain.js';
@@ -276,6 +276,7 @@ function actDone() {
     <h2>Akt ${run.act + 1}: ${esc(next.name)}</h2>
     <p class="act-intro">${esc(next.intro ?? '')}</p>
     <p class="hint">Thema: <b>${esc(next.thema)}</b> · Du wirst vollständig geheilt.</p>
+    ${Object.values(CARD_SETS).some((s) => s.act === run.act + 1) ? `<div class="unlock-box"><h3>Neue Kartensets in diesem Akt</h3><div class="build-list">${Object.values(CARD_SETS).filter((s) => s.act === run.act + 1).map((s) => `<div class="build"><b>${s.icon} ${esc(s.name)}</b><p>${esc(s.text)}</p></div>`).join('')}</div><p class="hint small">Ihre Karten tauchen als Belohnung und beim Händler auf, für jede Figur.</p></div>` : ''}
     ${next.geschenk ? `<p>Als Geschenk bekommst du:</p><div class="card-grid">${next.geschenk.map((id) => cardView(CARDS[id], { lesehilfe: true })).join('')}</div>` : ''}
     <div class="menu"><button class="btn big" data-a="go">Hinab in ${esc(next.name)}</button></div></div>`;
   app().querySelector('[data-a="go"]').addEventListener('click', () => { startNextAct(); showMap(); });

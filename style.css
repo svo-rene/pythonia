@@ -441,3 +441,4 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
 .build p { margin: 4px 0 0; font-size: 0.9em; }
 .stat.frost { background: #14405a; color: #bff0ff; }
 .hero-pick.locked { opacity: 0.5; filter: grayscale(0.8); cursor: not-allowed; }
+.kr.bg { background: linear-gradient(#ffd9a8, #c98a4b); color: #3a1f05; box-shadow: 0 0 8px rgba(255, 180, 100, 0.5); }

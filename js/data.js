@@ -683,3 +683,97 @@ Object.assign(CARDS, {
     code: 'for i in range(len(gegner_leben)):\n    gegner_leben[i] -= 2 + kombo', text: 'Jeder Gegner bekommt 2 plus kombo Schaden.',
     up: { code: 'for i in range(len(gegner_leben)):\n    gegner_leben[i] -= 3 + kombo', text: 'Jeder Gegner bekommt 3 plus kombo.' } },
 });
+
+// =====================================================================
+// KARTENSETS für alle Figuren, freigeschaltet je nach Akt
+// Akt 1: Waage (Leben als Ressource, Variable wunden) und Zufall (import random)
+// Akt 2: Beschwörer (Liste begleiter), Archivar (Listen ablage und ziehstapel), Rekursion (Funktionen, die sich selbst aufrufen)
+// =====================================================================
+export const CARD_SETS = {
+  waage: { name: 'Waage', icon: '⚖', act: 1, text: 'Leben als Rohstoff: Je verletzter du bist (wunden), desto stärker werden diese Karten.' },
+  zufall: { name: 'Zufall', icon: '🎲', act: 1, text: 'Würfelglück mit import random und random.randint(a, b).' },
+  beschwoerer: { name: 'Beschwörer', icon: '🐺', act: 2, text: 'Begleiter in der Liste begleiter greifen am Ende deines Zugs mit ihrem Wert an.' },
+  archivar: { name: 'Archivar', icon: '📚', act: 2, text: 'Arbeite mit den Listen ablage und ziehstapel: pop() holt Karten zurück auf die Hand.' },
+  rekursion: { name: 'Rekursion', icon: '🔁', act: 2, text: 'Funktionen, die sich selbst aufrufen. Schwer, aber mächtig.' },
+};
+
+CONCEPTS.rekursion = { name: 'Funktionen und Rekursion', act: 2, price: 60,
+  quiz: { code: 'def f(n):\n    if n == 0:\n        return 0\n    return 2 + f(n - 1)\nx = f(3)', frage: 'Welchen Wert hat x am Ende?', antwort: 6,
+    erklaerung: 'f(3) = 2 + f(2) = 2 + 2 + f(1) = 2 + 2 + 2 + f(0) = 6. Bei n == 0 hört die Funktion auf, sich selbst aufzurufen.' } };
+
+Object.assign(CARDS, {
+  // ---------- Waage ----------
+  rache: { set: 'waage', name: 'Rache', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'ziel_leben -= 4 + wunden // 3', text: '4 Schaden plus 1 für je 3 verlorene Leben (wunden).',
+    up: { code: 'ziel_leben -= 6 + wunden // 3', text: '6 Schaden plus wunden // 3.' } },
+  blutmauer: { set: 'waage', name: 'Blutmauer', cost: 1, concept: 'basis', type: 'skill',
+    code: 'block += 3 + wunden // 4', text: '3 Block plus 1 für je 4 verlorene Leben.',
+    up: { code: 'block += 5 + wunden // 4', text: '5 Block plus wunden // 4.' } },
+  schmerzgrenze: { set: 'waage', name: 'Schmerzgrenze', cost: 1, concept: 'if', type: 'angriff', target: true,
+    code: 'if leben < max_leben // 2:\n    ziel_leben -= 16\nelse:\n    ziel_leben -= 5', text: 'Unter halbem Leben 16 Schaden, sonst 5.',
+    up: { code: 'if leben < max_leben // 2:\n    ziel_leben -= 20\nelse:\n    ziel_leben -= 7', text: 'Unter halbem Leben 20 Schaden, sonst 7.' } },
+  blutrausch: { set: 'waage', name: 'Blutrausch', cost: 2, concept: 'for', type: 'angriff', target: true,
+    code: 'leben -= 5\nfor i in range(3):\n    ziel_leben -= 3 + wunden // 6', text: 'Kostet 5 Leben. Dreimal 3 Schaden plus wunden // 6.',
+    up: { code: 'leben -= 5\nfor i in range(3):\n    ziel_leben -= 4 + wunden // 6', text: 'Kostet 5 Leben. Dreimal 4 plus wunden // 6.' } },
+  blutschwur: { set: 'waage', name: 'Blutschwur', cost: 0, concept: 'basis', type: 'skill',
+    code: 'leben -= 4\nenergie += 2', text: 'Kostet 4 Leben, gibt 2 Energie.',
+    up: { code: 'leben -= 3\nenergie += 2', text: 'Kostet nur 3 Leben, gibt 2 Energie.' } },
+  // ---------- Zufall ----------
+  wuerfelwurf: { set: 'zufall', name: 'Würfelwurf', cost: 1, concept: 'basis', type: 'angriff', target: true,
+    code: 'import random\nwurf = random.randint(1, 6)\nziel_leben -= wurf * 2', text: 'Würfelt 1 bis 6, doppelt so viel Schaden.',
+    up: { code: 'import random\nwurf = random.randint(1, 6)\nziel_leben -= wurf * 2 + 3', text: 'Gewürfelt mal 2, plus 3 Schaden.' } },
+  gluecksschild: { set: 'zufall', name: 'Glücksschild', cost: 1, concept: 'basis', type: 'skill',
+    code: 'import random\nblock += random.randint(3, 10)', text: 'Zufällig 3 bis 10 Block.',
+    up: { code: 'import random\nblock += random.randint(5, 12)', text: 'Zufällig 5 bis 12 Block.' } },
+  allesodernichts: { set: 'zufall', name: 'Alles oder nichts', cost: 1, concept: 'if', type: 'angriff', target: true,
+    code: 'import random\nwurf = random.randint(1, 6)\nif wurf == 6:\n    ziel_leben -= 25\nelse:\n    ziel_leben -= wurf', text: 'Bei einer 6: 25 Schaden! Sonst so viel, wie gewürfelt.',
+    up: { code: 'import random\nwurf = random.randint(1, 6)\nif wurf >= 5:\n    ziel_leben -= 25\nelse:\n    ziel_leben -= wurf', text: 'Bei 5 oder 6: 25 Schaden, sonst der Wurf.' } },
+  muenzwurf: { set: 'zufall', name: 'Münzwurf', cost: 0, concept: 'if', type: 'skill',
+    code: 'import random\nif random.randint(0, 1) == 1:\n    energie += 2\nelse:\n    leben -= 3', text: 'Kopf: +2 Energie. Zahl: −3 Leben.',
+    up: { code: 'import random\nif random.randint(0, 1) == 1:\n    energie += 2\nelse:\n    leben -= 1', text: 'Kopf: +2 Energie. Zahl: nur −1 Leben.' } },
+  gluecksregen: { set: 'zufall', name: 'Glücksregen', cost: 2, concept: 'for', type: 'angriff', target: true,
+    code: 'import random\nfor i in range(3):\n    ziel_leben -= random.randint(2, 6)', text: 'Dreimal zufällig 2 bis 6 Schaden.',
+    up: { code: 'import random\nfor i in range(4):\n    ziel_leben -= random.randint(2, 6)', text: 'Viermal zufällig 2 bis 6 Schaden.' } },
+  // ---------- Beschwörer (Akt 2) ----------
+  wolfsruf: { set: 'beschwoerer', act: 2, name: 'Wolfsruf', cost: 1, concept: 'liste', type: 'skill',
+    code: 'begleiter.append(3)', text: 'Ein Wolf (3) kommt in deine Liste begleiter. Jeder Begleiter greift am Ende deines Zugs mit seinem Wert an.',
+    up: { code: 'begleiter.append(5)', text: 'Ein Wolf mit Wert 5.' } },
+  golem: { set: 'beschwoerer', act: 2, name: 'Steingolem', cost: 2, concept: 'liste', type: 'skill',
+    code: 'begleiter.append(7)\nblock += 4', text: 'Ein Golem (7) kommt dazu, und 4 Block.',
+    up: { code: 'begleiter.append(9)\nblock += 5', text: 'Ein Golem (9) und 5 Block.' } },
+  rudelruf: { set: 'beschwoerer', act: 2, name: 'Rudelruf', cost: 1, concept: 'for', type: 'skill',
+    code: 'for i in range(len(begleiter)):\n    begleiter[i] += 2', text: 'Jeder Begleiter wird um 2 stärker.',
+    up: { code: 'for i in range(len(begleiter)):\n    begleiter[i] += 3', text: 'Jeder Begleiter wird um 3 stärker.' } },
+  opfergabe: { set: 'beschwoerer', act: 2, name: 'Opfergabe', cost: 0, concept: 'liste', type: 'skill',
+    code: 'if len(begleiter) > 0:\n    block += begleiter.pop() * 3', text: 'Der letzte Begleiter geht (pop) und gibt dreimal seinen Wert als Block.',
+    up: { code: 'if len(begleiter) > 0:\n    block += begleiter.pop() * 4', text: 'Letzter Begleiter geht, viermal sein Wert als Block.' } },
+  angriffsbefehl: { set: 'beschwoerer', act: 2, name: 'Angriffsbefehl', cost: 1, concept: 'liste', type: 'angriff', target: true,
+    code: 'ziel_leben -= sum(begleiter)', text: 'Alle Begleiter greifen sofort zusätzlich an (Summe ihrer Werte).',
+    up: { code: 'ziel_leben -= sum(begleiter) + 4', text: 'Summe der Begleiter plus 4.' } },
+  // ---------- Archivar (Akt 2) ----------
+  recyceln: { set: 'archivar', act: 2, name: 'Recyceln', cost: 1, concept: 'liste', type: 'skill',
+    code: 'if len(ablage) > 0:\n    ablage.pop()', text: 'Die zuletzt abgelegte Karte kommt mit pop() zurück auf deine Hand.',
+    up: { cost: 0, text: 'Die zuletzt abgelegte Karte kommt zurück auf die Hand. Kostet nichts.' } },
+  stapelblick: { set: 'archivar', act: 2, name: 'Stapelwucht', cost: 1, concept: 'liste', type: 'angriff', target: true,
+    code: 'ziel_leben -= 2 * len(ablage)', text: '2 Schaden für jede Karte in deiner Ablage.',
+    up: { code: 'ziel_leben -= 3 * len(ablage)', text: '3 Schaden pro Karte in der Ablage.' } },
+  nachschlagen: { set: 'archivar', act: 2, name: 'Nachschlagen', cost: 1, concept: 'for', type: 'skill',
+    code: 'for i in range(2):\n    if len(ziehstapel) > 0:\n        ziehstapel.pop()', text: 'Nimmt zweimal die oberste Karte (das Ende der Liste) vom Ziehstapel auf die Hand.',
+    up: { code: 'for i in range(3):\n    if len(ziehstapel) > 0:\n        ziehstapel.pop()', text: 'Dreimal die oberste Karte vom Ziehstapel.' } },
+  archivschlag: { set: 'archivar', act: 2, name: 'Archivschlag', cost: 1, concept: 'liste', type: 'angriff', target: true,
+    code: 'ziel_leben -= 4 + 3 * ablage.count("Funke")', text: '4 Schaden plus 3 für jeden Funken in der Ablage (count zählt).',
+    up: { code: 'ziel_leben -= 4 + 4 * ablage.count("Funke")', text: '4 plus 4 pro Funke in der Ablage.' } },
+  // ---------- Rekursion (Akt 2) ----------
+  kettenreaktion: { set: 'rekursion', act: 2, name: 'Kettenreaktion', cost: 2, concept: 'rekursion', type: 'angriff', target: true,
+    code: 'def welle(n):\n    if n == 0:\n        return 0\n    return n + welle(n - 1)\nziel_leben -= welle(4)', text: 'welle(4) = 4 + 3 + 2 + 1 = 10 Schaden. Die Funktion ruft sich selbst auf.',
+    up: { code: 'def welle(n):\n    if n == 0:\n        return 0\n    return n + welle(n - 1)\nziel_leben -= welle(5)', text: 'welle(5) = 15 Schaden.' } },
+  fraktal: { set: 'rekursion', act: 2, name: 'Fraktal', cost: 2, concept: 'rekursion', type: 'angriff',
+    code: 'def teile(n):\n    if n < 2:\n        return 1\n    return 1 + teile(n // 2)\nfor i in range(len(gegner_leben)):\n    gegner_leben[i] -= 2 * teile(16)', text: 'teile(16) halbiert so lange, bis 1 übrig ist, und zählt mit. Jeder Gegner bekommt das Doppelte.',
+    up: { code: 'def teile(n):\n    if n < 2:\n        return 1\n    return 1 + teile(n // 2)\nfor i in range(len(gegner_leben)):\n    gegner_leben[i] -= 3 * teile(16)', text: 'Jeder Gegner bekommt dreimal teile(16).' } },
+  echoschild: { set: 'rekursion', act: 2, name: 'Echoschild', cost: 1, concept: 'rekursion', type: 'skill',
+    code: 'def summe(liste):\n    if len(liste) == 0:\n        return 0\n    return liste[0] + summe(liste[1:])\nblock += summe(gegner_angriff)', text: 'Rechnet rekursiv zusammen, wie viel Schaden alle Gegner planen, und gibt so viel Block.',
+    up: { code: 'def summe(liste):\n    if len(liste) == 0:\n        return 0\n    return liste[0] + summe(liste[1:])\nblock += summe(gegner_angriff) + 3', text: 'Block in Höhe des geplanten Schadens plus 3.' } },
+  potenz: { set: 'rekursion', act: 2, name: 'Verdoppler', cost: 1, concept: 'rekursion', type: 'skill',
+    code: 'def doppelt(wert, mal):\n    if mal == 0:\n        return wert\n    return doppelt(wert * 2, mal - 1)\nblock += doppelt(2, 2)', text: 'doppelt(2, 2) verdoppelt zweimal: 2 → 4 → 8 Block.',
+    up: { code: 'def doppelt(wert, mal):\n    if mal == 0:\n        return wert\n    return doppelt(wert * 2, mal - 1)\nblock += doppelt(3, 2)', text: 'doppelt(3, 2) = 12 Block.' } },
+});

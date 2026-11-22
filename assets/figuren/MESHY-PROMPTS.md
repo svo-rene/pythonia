@@ -85,3 +85,19 @@ export const BILDER = {
 ```
 
 Trage nur Figuren ein, für die es schon ein Bild gibt. Die anderen bleiben Zeichnungen.
+
+---
+
+## Neue Figuren (Akt 2 und Figuren nach Akt 1)
+
+Erzeugt mit demselben Stil-Zusatz wie oben, per Meshy-API, gerendert mit `tools/figuren-render.html` (Licht 1,3).
+
+| Datei | Prompt |
+| --- | --- |
+| `eishexe` | young ice witch girl, pale blue pointed hat with snowflake patterns, flowing white and icy blue robe, staff topped with a glowing ice crystal, frosty breath, gentle confident smile |
+| `gaukler` | cheerful juggler jester boy, red and gold harlequin outfit with diamond pattern, floppy jester hat with little bells, juggling three glowing colored balls, playful grin |
+| `echofledermaus` | small round purple cave bat, huge pointy ears with glowing sound rings, big leathery wings spread, tiny fangs, big curious eyes |
+| `kristalldieb` | sneaky goblin thief, green skin, dark hooded cloak, sack full of glowing blue crystals, mischievous grin, sneaking pose |
+| `minenwurm` | chubby segmented brown cave worm with a miners helmet and headlamp, body rings studded with small round red mines, grumpy face |
+| `zahlenhydra` | small three-headed teal hydra dragon, glowing number on each forehead, round belly, stubby legs, short wings |
+| `mischer` (Boss) | giant card shuffling golem made of floating stone tablets and playing cards, glowing magenta core, four arms shuffling cards, one large eye |

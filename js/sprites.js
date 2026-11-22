@@ -114,17 +114,17 @@ export const BILDER = {
   schwarmbiene: 'assets/figuren/schwarmbiene.png',
   schleifenschlange: 'assets/figuren/schleifenschlange.png',
   verzweiger: 'assets/figuren/verzweiger.png',
+  eishexe: 'assets/figuren/eishexe.png',
+  gaukler: 'assets/figuren/gaukler.png',
+  echofledermaus: 'assets/figuren/echofledermaus.png',
+  kristalldieb: 'assets/figuren/kristalldieb.png',
+  minenwurm: 'assets/figuren/minenwurm.png',
+  zahlenhydra: 'assets/figuren/zahlenhydra.png',
+  mischer: 'assets/figuren/mischer.png',
 };
 
 // Akt-2-Gegner nutzen vorerst umgefärbte Bilder (eigene Meshy-Figuren können später folgen).
 const VARIANTEN = {
-  echofledermaus: ['schwarmbiene', 'hue-rotate(210deg) saturate(1.2)'],
-  kristalldieb: ['fehlerteufel', 'hue-rotate(170deg) saturate(1.3)'],
-  minenwurm: ['tintenfleck', 'hue-rotate(40deg) sepia(0.5) saturate(2)'],
-  zahlenhydra: ['schleifenschlange', 'hue-rotate(250deg) saturate(1.4)'],
-  mischer: ['verzweiger', 'hue-rotate(160deg) saturate(1.6)'],
-  eishexe: ['magierin', 'hue-rotate(170deg) saturate(1.3)'],
-  gaukler: ['orakel', 'hue-rotate(110deg) saturate(1.6)'],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {

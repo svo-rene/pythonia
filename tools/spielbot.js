@@ -56,7 +56,7 @@ function score(dbg, sim) {
   const crystals = Array.isArray(v.kristalle) && Array.isArray(start.kristalle) ? v.kristalle.reduce((a, b) => a + b, 0) - start.kristalle.reduce((a, b) => a + b, 0) : 0;
   const d = (k) => (typeof v[k] === 'number' && typeof start[k] === 'number' ? v[k] - start[k] : 0);
   const listGain = (k) => (Array.isArray(v[k]) && Array.isArray(start[k]) ? v[k].reduce((a, b) => a + b, 0) - start[k].reduce((a, b) => a + b, 0) : 0);
-  const status = (d('ziel_brand') + listGain('gegner_brand')) * 1.6 + (d('ziel_schwach') + listGain('gegner_schwach')) * 1.5 + d('ziel_verwundbar') * 2 + d('dornen') * 2.5 + (d('ziel_frost') + listGain('gegner_frost')) * 1.4;
+  const status = (d('ziel_brand') + listGain('gegner_brand')) * 1.6 + (d('ziel_schwach') + listGain('gegner_schwach')) * 1.5 + d('ziel_verwundbar') * 2 + d('dornen') * 2.5 + (d('ziel_frost') + listGain('gegner_frost')) * 1.4 + listGain('begleiter') * 2;
   return dmg + kills * 12 + usefulBlock * 1.2 + lifeDelta * 1.1 + strength * 4 + energy * 3 + Math.max(0, crystals) * 0.7 + status;
 }
 

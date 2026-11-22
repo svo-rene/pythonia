@@ -6,7 +6,7 @@ export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const TOKEN = /(#.*$|"[^"\n]*"|'[^'\n]*'|\b\d+\b|\b(?:if|elif|else|for|in|while|and|or|not|True|False|None|def)\b|\b(?:range|len|ziehe|print|int|input)\b)/g;
+const TOKEN = /(#.*$|"[^"\n]*"|'[^'\n]*'|\b\d+\b|\b(?:if|elif|else|for|in|while|and|or|not|True|False|None|def|return|import|global)\b|\b(?:range|len|ziehe|print|int|input)\b)/g;
 
 /** Eine Zeile Python mit einfacher Syntaxfärbung. */
 export function hl(line) {

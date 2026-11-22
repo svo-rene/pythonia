@@ -28,8 +28,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const HEROES = ['magierin', 'waechter', 'orakel'];
-const ALL = [...HEROES, 'tintenfleck', 'rostwaechter', 'fehlerteufel', 'schwarmbiene', 'schleifenschlange', 'verzweiger'];
+const HEROES = ['magierin', 'waechter', 'orakel', 'eishexe', 'gaukler'];
+const ALL = [...HEROES, 'tintenfleck', 'rostwaechter', 'fehlerteufel', 'schwarmbiene', 'schleifenschlange', 'verzweiger', 'echofledermaus', 'kristalldieb', 'minenwurm', 'zahlenhydra', 'mischer'];
 const sel = document.getElementById('fig');
 sel.innerHTML = ALL.map((f) => `<option>${f}</option>`).join('');
 
@@ -52,7 +52,7 @@ const loader = new GLTFLoader();
 let model = null;
 let current = null;
 
-function size(fig) { return fig === 'verzweiger' ? [640, 720] : [480, 560]; }
+function size(fig) { return fig === 'verzweiger' || fig === 'mischer' ? [640, 720] : [480, 560]; }
 
 /** Rendert eine Figur. Grad > 0 dreht die Front nach rechts. */
 window.renderFig = async (fig, deg, licht = 1) => {

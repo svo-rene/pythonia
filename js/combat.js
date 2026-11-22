@@ -13,7 +13,7 @@ let C = null;          // laufender Kampf
 let onEnd = null;      // Rückruf: ({ won }) => …
 
 const HIDE_VARS = ['max_leben'];
-const STATUS_KEYS = ['dornen', 'kombo', 'ziel_brand', 'ziel_schwach', 'ziel_verwundbar', 'ziel_frost', 'gegner_brand', 'gegner_schwach', 'gegner_frost'];
+const STATUS_KEYS = ['wunden', 'begleiter', 'dornen', 'kombo', 'ziel_brand', 'ziel_schwach', 'ziel_verwundbar', 'ziel_frost', 'gegner_brand', 'gegner_schwach', 'gegner_frost'];
 
 export function startCombat(encId, kind, done) {
   onEnd = done;
@@ -51,6 +51,7 @@ export function startCombat(encId, kind, done) {
   C.kristalle = [];    // Akt 2: Kristall-Liste, bleibt während des Kampfs erhalten
   C.dornen = 0;        // Spielweisen: Dornen-Schaden an Angreifer
   C.combo = 0;         // Karten, die in diesem Zug schon gespielt wurden
+  C.begleiter = [];    // Akt 2, Beschwörer: Begleiter greifen am Zugende mit ihrem Wert an
   C.relicMem = {};     // merk-Variable je Relikt, bleibt im Kampf erhalten
   C.relicLog = [];
   C.fired = {};
@@ -138,8 +139,9 @@ function startTurn() {
   if (C.turn > 1) C.relicLog = [];
   if (runRelics('zug_start')) updateIntents();
   C.inspired = null;
-  if (C.hand.length && rng() < eingebungChance()) {
-    C.inspired = C.hand[Math.floor(rng() * C.hand.length)];
+  const predictable = C.hand.filter((u) => !/\brandom\b/.test(cardDef(cardByUid(u)).code));
+  if (predictable.length && rng() < eingebungChance()) {
+    C.inspired = predictable[Math.floor(rng() * predictable.length)];
     C.message = `${C.message ? `${C.message}<br>` : ""}🔮 <b>Eingebung!</b> ${esc(cardDef(cardByUid(C.inspired)).name)} leuchtet. Sag vorher, was sie bewirkt: Stimmt es, wirkt sie doppelt.`;
   }
   render();
@@ -203,7 +205,8 @@ function baseVars() {
     ziel_angriff: t?.intent ? t.intent.dmg : 0,
     gegner_leben: live.map((e) => e.hp),
     gegner_angriff: live.map((e) => e.intent?.dmg ?? 0),
-    ...(game.run.act >= 2 ? { kristalle: [...C.kristalle] } : {}),
+    ...(game.run.act >= 2 ? { kristalle: [...C.kristalle], begleiter: [...C.begleiter] } : {}),
+    wunden: game.run.maxHp - game.run.hp,
     ...(builds() ? {
       dornen: C.dornen,
       ziel_brand: t ? t.st.brand : 0,
@@ -302,9 +305,14 @@ async function playCard(uid, prediction = null, eingabe = null) {
   start.hand = C.hand.map((u) => cardDef(cardByUid(u)).name);
   const realStaerke = C.staerke;
   if (C.rule === 'staerke_null') start.staerke = 0;
+  if (/\b(ablage|ziehstapel)\b/.test(def.code)) {
+    start.ablage = C.discard.map((u) => cardDef(cardByUid(u)).name);
+    start.ziehstapel = C.draw.map((u) => cardDef(cardByUid(u)).name);
+  }
+  const discardBefore = [...C.discard];
   let drawn = 0;
   const runCode = def.eingabe ? withInput(def.code, eingabe) : def.code;
-  const res = runPy(runCode, start, { natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
+  const res = runPy(runCode, start, { seed: Math.floor(rng() * 1e9) + 1, natives: { ziehe: (n) => { drawn += Math.max(0, Math.min(5, Number(n) || 0)); } } });
 
   // Vorhersage auswerten, bevor die Animation läuft
   let mult = 1;
@@ -343,6 +351,7 @@ async function playCard(uid, prediction = null, eingabe = null) {
   await cardFx(cardEffect(start, res), speed());
   trackStats(def, start, res.vars, mult, prediction);
   applyCardResult(start, res.vars, mult);
+  takeFromPiles(start, res.vars, discardBefore);
   C.combo++;
   if (C.rule === 'staerke_null') C.staerke = realStaerke + num(res.vars.staerke, 0);
   fixTarget();
@@ -392,6 +401,20 @@ function trackStats(def, start, v, mult, prediction) {
   if (st.predRight >= 3) unlockAchievement('hellseher');
 }
 
+/** Archivar: pop() aus ablage oder ziehstapel holt diese Karten auf die Hand (nur Entnehmen vom Ende zählt). */
+function takeFromPiles(start, v, discardBefore) {
+  const popped = (before, after) => (Array.isArray(before) && Array.isArray(after) && after.length < before.length
+    && after.every((x, i) => x === before[i]) ? before.length - after.length : 0);
+  const fromDiscard = popped(start.ablage, v.ablage);
+  if (fromDiscard) {
+    const uids = discardBefore.slice(-fromDiscard);
+    C.discard = C.discard.filter((u) => !uids.includes(u));
+    C.hand.push(...uids.reverse());
+  }
+  const fromDraw = popped(start.ziehstapel, v.ziehstapel);
+  for (let i = 0; i < fromDraw && C.draw.length; i++) C.hand.push(C.draw.pop());
+}
+
 function setKristalle(list) {
   if (Array.isArray(list)) C.kristalle = list.map((x) => num(x, 0)).slice(0, 12);
 }
@@ -405,6 +428,7 @@ function applyCardResult(start, v, mult) {
   C.energie = Math.max(0, num(v.energie, start.energie));
   C.staerke = num(v.staerke, start.staerke);
   setKristalle(v.kristalle);
+  if (Array.isArray(v.begleiter)) C.begleiter = v.begleiter.map((x) => Math.max(0, num(x, 0))).slice(0, 6);
   if (builds()) {
     C.dornen = Math.max(0, num(v.dornen, start.dornen ?? 0));
     for (const [key, list] of [['brand', 'gegner_brand'], ['schwach', 'gegner_schwach'], ['verwundbar', null], ['frost', 'gegner_frost']]) {
@@ -462,6 +486,21 @@ async function endTurn() {
   }
   C.discard.push(...C.hand);
   C.hand = [];
+  if (C.begleiter.length) {
+    let total = 0;
+    for (const b of C.begleiter) {
+      fixTarget();
+      const t = C.enemies[C.target];
+      if (!t || t.hp <= 0) break;
+      const d = Math.ceil(b * (t.st.verwundbar > 0 ? 1.5 : 1));
+      t.hp = Math.max(0, t.hp - d);
+      total += d;
+    }
+    C.message = `🐺 Deine Begleiter greifen an: ${total} Schaden.`;
+    render();
+    await sleep(700 * speed());
+    if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+  }
   if (builds()) {
     const burns = [];
     for (const e of alive()) {
@@ -652,6 +691,7 @@ function render() {
             ${playerBlock > 0 ? `<span class="block-badge" title="Block">⛨ ${playerBlock}</span>` : ''}
             <div class="bar"><div class="fill php" style="width:${(100 * playerHp) / run.maxHp}%"></div><span>${playerHp} / ${run.maxHp}</span></div>
           </div>
+          ${C.begleiter.length ? `<div class="kristalle begleiter-row" title="Deine Liste begleiter: greifen am Ende deines Zugs an"><code>begleiter</code>${C.begleiter.map((b, i) => `<span class="kr bg"><b>🐺${b}</b><small>[${i}]</small></span>`).join('')}</div>` : ''}
           ${run.act >= 2 ? `<div class="kristalle" title="Deine Liste kristalle"><code>kristalle</code>${C.kristalle.map((k, i) => `<span class="kr"><b>${k}</b><small>[${i}]</small></span>`).join('') || '<span class="kr-empty">= [ ]</span>'}</div>` : ''}
         </div>
         <div class="fig" style="${bob()}">${heroSprite(run.hero)}${pHit.pop}</div>

@@ -32,6 +32,12 @@ const VARS = {
   ziel_frost: 'der Frost deines Ziels: Ab 5 erstarrt es und setzt einen Zug aus',
   gegner_frost: 'eine Liste mit dem Frost aller Gegner',
   kombo: 'wie viele Karten du in diesem Zug schon gespielt hast',
+  wunden: 'wie viel Leben dir gerade fehlt (max_leben minus leben)',
+  max_leben: 'dein höchstmögliches Leben',
+  begleiter: 'deine Begleiter-Liste: Jeder greift am Ende deines Zugs mit seinem Wert an',
+  ablage: 'die Namen der Karten in deinem Ablagestapel, die zuletzt abgelegte steht hinten',
+  ziehstapel: 'die Namen der Karten in deinem Ziehstapel, die oberste steht hinten',
+  wurf: 'eine Zufallszahl, die der Code gewürfelt hat',
   kristalle: 'deine Kristall-Liste: Zahlen, die du sammelst und wirfst. Sie bleibt im ganzen Kampf erhalten',
   echo: 'eine Liste, die sich der Gegner merkt und die jede Runde wächst',
   minen: 'eine Liste mit Minen; die vorderste explodiert',
@@ -51,6 +57,10 @@ const CONCEPTS = [
   { test: /\[\s*-?\d*\s*:\s*-?\d*\s*\]/, name: 'Slicing [a:b]', text: '<code>liste[1:3]</code> ist ein Ausschnitt: die Positionen 1 und 2 (die 3 nicht mehr). <code>liste[:2]</code> sind die ersten beiden.' },
   { test: /\[-1\]/, name: 'Index -1', text: '<code>liste[-1]</code> ist das letzte Element, <code>liste[-2]</code> das vorletzte.' },
   { test: /\b(sum|max|min)\(/, name: 'sum(), max(), min()', text: '<code>sum(liste)</code> addiert alle Werte, <code>max(liste)</code> ist der größte, <code>min(liste)</code> der kleinste.' },
+  { test: /\brandom\.randint\(/, name: 'random.randint()', text: '<code>import random</code> lädt das Zufallsmodul. <code>random.randint(1, 6)</code> liefert eine zufällige ganze Zahl von 1 bis 6, <b>beide Grenzen eingeschlossen</b>, wie ein Würfel.' },
+  { test: /^\s*def (\w+)\([^)]*\):[\s\S]*\b\1\(/m, name: 'Rekursion', text: 'Die Funktion ruft sich <b>selbst</b> auf, jedes Mal mit einem kleineren Wert. Die Bedingung oben (der <b>Abbruch</b>, z. B. <code>if n == 0: return 0</code>) sorgt dafür, dass es irgendwann aufhört. Beispiel: welle(3) = 3 + welle(2) = 3 + 2 + welle(1) = 3 + 2 + 1 + welle(0) = 6.' },
+  { test: /\breturn\b/, name: 'return', text: '<code>return x</code> beendet die Funktion und gibt x als Ergebnis zurück. Wer die Funktion aufgerufen hat, rechnet mit diesem Ergebnis weiter.' },
+  { test: /\.count\(/, name: 'count()', text: '<code>liste.count(x)</code> zählt, wie oft x in der Liste vorkommt.' },
   { test: /\blen\(/, name: 'len()', text: '<code>len(liste)</code> sagt, wie viele Einträge eine Liste hat. Bei <code>[20, 14]</code> ist das 2.' },
   { test: /\brange\(/, name: 'range()', text: '<code>range(3)</code> liefert die Zahlen 0, 1, 2. Es fängt bei 0 an und hört <b>vor</b> der 3 auf. <code>range(1, 4)</code> liefert 1, 2, 3.' },
   { test: /^\s*for\b/m, name: 'for-Schleife', text: 'Eine for-Schleife wiederholt die eingerückten Zeilen darunter, einmal für jeden Wert. Was eingerückt ist, gehört zur Schleife.' },
@@ -90,6 +100,9 @@ export function explainLine(raw) {
   if (!line) return '';
   if (line.startsWith('#')) return 'Ein Kommentar: Er ist nur für Menschen und wird nicht ausgeführt.';
   let m;
+  if (line === 'import random') return 'Lädt das Modul <code>random</code>, damit der Code würfeln kann.';
+  if ((m = line.match(/^return (.+)$/))) return `Beendet die Funktion und gibt ${c(m[1])} als Ergebnis zurück.`;
+  if ((m = line.match(/^def (\w+)\((.+)\):$/))) return `Legt die Funktion ${c(m[1])} mit dem Parameter ${c(m[2])} an. Das Eingerückte darunter läuft erst, wenn sie aufgerufen wird.`;
   if ((m = line.match(/^def (\w+)\(\):$/))) return `Legt die Funktion ${c(m[1])} an. ${HOOKS[m[1]] ? `Das Spiel ruft sie <b>${esc(HOOKS[m[1]])}</b> auf.` : ''} Alles Eingerückte darunter gehört zu ihr.`;
   if ((m = line.match(/^if (.+):$/))) return `<b>Wenn</b> ${condText(m[1])}, laufen die eingerückten Zeilen darunter.`;
   if ((m = line.match(/^elif (.+):$/))) return `<b>Sonst, wenn</b> ${condText(m[1])}, laufen die eingerückten Zeilen darunter.`;

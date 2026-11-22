@@ -10,7 +10,9 @@ ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 
 
 class Handler(BaseHTTPRequestHandler):
     def _cors(self):
-        self.send_header('Access-Control-Allow-Origin', 'http://localhost:8765')
+        origin = self.headers.get('Origin', '')
+        if re.fullmatch(r'http://localhost:87\d\d', origin):
+            self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 

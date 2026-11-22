@@ -33,6 +33,16 @@ Jede Figur hat eine **Grundeigenschaft** (ein Relikt, also eine Python-Funktion)
 | Eishexe | Frosthauch: jede Runde +1 Frost auf alle | ❄ Eis (ab 5 Frost setzt ein Gegner aus) | nach Akt 1 |
 | Gaukler | Jonglierball: 4. Karte im Zug gibt Energie | 🤹 Kombo (`kombo` zählt die Karten im Zug) | nach Akt 1 |
 
+Dazu kommen **Kartensets für alle Figuren**, freigeschaltet je nach Akt:
+
+| Set | ab Akt | Python | Idee |
+| --- | --- | --- | --- |
+| ⚖ Waage | 1 | `wunden`, `//`, `if` | Je verletzter, desto stärker |
+| 🎲 Zufall | 1 | `import random`, `random.randint` | Würfelglück (keine Eingebung auf Zufallskarten) |
+| 🐺 Beschwörer | 2 | Liste `begleiter`, `append`, `pop`, `sum` | Begleiter greifen am Zugende an |
+| 📚 Archivar | 2 | Listen `ablage`, `ziehstapel`, `pop`, `count` | Karten aus Ablage/Ziehstapel auf die Hand holen |
+| 🔁 Rekursion | 2 | `def`, `return`, Selbstaufruf | Konzept „Funktionen und Rekursion“ beim Händler |
+
 Statuswerte: Brand schadet am Zugende und sinkt um 1; schwach = −25 % Gegnerschaden; verwundbar = +50 % Schaden; Frost ab 5 = Zug aussetzen. Statuswerte, die 0 sind, blendet die Variablentafel aus.
 
 ## Inhalt des Prototyps
