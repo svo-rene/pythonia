@@ -464,3 +464,8 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
 .card[data-steps]::before { content: '⏱ ' attr(data-steps); position: absolute; top: 6px; right: 8px; font-size: 11px; font-weight: 700; color: var(--accent2); background: var(--bg2); border-radius: 6px; padding: 0 5px; }
 .card.slow::before { color: var(--bad); }
 .zeit-badge { border-color: var(--accent2) !important; }
+.title-screen .about { max-width: 520px; margin: 18px auto 0; font-size: 12px; opacity: .8; }
+
+.stage.foes-4 .foe { width: 150px; }
+.stage.foes-4 .foes { gap: 6px; }
+.stage.foes-4 .foe img.sprite.bild { height: 105px; }

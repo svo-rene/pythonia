@@ -206,3 +206,10 @@ export function tutorialBuilds() {
     { sel: '.side-panel.left', text: 'Bei dir kann <code>dornen</code> dazukommen: Wer dich angreift, bekommt so viel Schaden zurück. Bau dein Deck um eine Spielweise herum, oder mische sie!' },
   ]);
 }
+
+export function tutorialAct3() {
+  runTutorial('akt3', [
+    { sel: '.foe .intent', text: '<b>Im Spiegelturm</b> rechnen die Gegner mit Funktionen: <code>def</code> legt eine an, <code>return</code> gibt das Ergebnis zurück. Mit ❓ siehst du Schritt für Schritt, was passiert.' },
+    { sel: '.foe', text: 'Ein <b>Spiegelschleim</b> teilt sich, wenn er fällt: in zwei halb so große. Die teilen sich wieder, bis sie zu klein sind. Genau so arbeitet eine Rekursion mit Abbruch.' },
+  ]);
+}

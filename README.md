@@ -125,3 +125,6 @@ BOT.fights; BOT.log; BOT.summary;
 
 Der Bot schaltet das Tempo auf „turbo“ und markiert alle Einführungen als gesehen. Er überschreibt den Spielstand dieses Browsers.
 
+## Über das Spiel
+
+Entstanden für meine Schülerinnen und Schüler am Gymnasium Dresden-Pieschen. Über Feedback und Hinweise freue ich mich sehr. – René Richter, richter (at) gdpie.lernsax.de

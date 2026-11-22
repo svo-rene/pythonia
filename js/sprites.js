@@ -129,6 +129,11 @@ const VARIANTEN = {
   gladiator: ['waechter', 'hue-rotate(330deg) saturate(2) sepia(0.3)', true],
   wolfsmutter: ['zahlenhydra', 'hue-rotate(80deg) saturate(1.2)'],
   bibliothekar: ['orakel', 'hue-rotate(60deg) sepia(0.6)', true],
+  spiegelschleim: ['tintenfleck', 'hue-rotate(140deg) saturate(0.4) brightness(1.5)'],
+  turmwaechter: ['rostwaechter', 'grayscale(0.7) brightness(1.2)'],
+  rekursionsrabe: ['echofledermaus', 'grayscale(0.9) brightness(0.8)'],
+  spiegelritter: ['waechter', 'hue-rotate(180deg) saturate(1.5) brightness(1.1)', true],
+  spiegelkoenigin: ['eishexe', 'hue-rotate(250deg) saturate(1.6)', true],
 };
 const SHADOW = 'drop-shadow(0 0 1px rgba(255,255,255,.45)) drop-shadow(0 6px 6px rgba(0,0,0,.5))';
 const img = (id) => {

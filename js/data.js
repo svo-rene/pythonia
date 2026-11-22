@@ -893,3 +893,137 @@ Object.assign(RIDDLES, {
 MAP_PLAN_2[2].forges = ['stapler', 'tauschzauber', 'sortierschuss'];
 MAP_PLAN_2[7].forges = ['blasenschmiede', 'durchzaehlen', 'zwillinge'];
 ACTS[2].intro = 'In den Listengruben sammelst du Kristalle in einer Liste (append, pop, sort). Neu: Jeder Zug hat nur begrenzte Rechenzeit. Jede Karte zeigt ⏱, wie viele Schritte sie braucht. Zwei Schleifen ineinander werden schnell zu teuer!';
+
+// =====================================================================
+// AKT 3: Der Spiegelturm (Funktionen, return, Rekursion)
+// Besonderheit: Spiegelschleime teilen sich, wenn sie fallen (teilt: true), bis sie zu klein sind.
+// =====================================================================
+Object.assign(ENEMIES, {
+  spiegelschleim: { name: 'Spiegelschleim', hp: 24, teilt: true,
+    code: 'def echo(n):\n    if n == 0:\n        return 0\n    return 2 + echo(n - 1)\nleben -= echo(mein_leben // 6 + 1)' },
+  turmwaechter: { name: 'Turmwächter', hp: 46, mem: { runde: 0 },
+    code: 'def schlag(stufe):\n    return stufe * 3 + 2\nrunde += 1\nleben -= schlag(runde)' },
+  rekursionsrabe: { name: 'Rekursionsrabe', hp: 36, mem: { runde: 0 },
+    code: 'def flug(n):\n    if n <= 1:\n        return 1\n    return flug(n - 1) + flug(n - 2)\nrunde += 1\nleben -= flug(runde + 2)' },
+  spiegelritter: { name: 'Der Spiegelritter', hp: 100, elite: true,
+    code: 'def spiegel(x):\n    if x < 5:\n        return x\n    return spiegel(x // 2) + 2\nleben -= spiegel(block) + 8' },
+  spiegelkoenigin: { name: 'Die Spiegelkönigin', hp: 200, boss: true, mem: { runde: 0 },
+    code: 'def welle(n):\n    if n == 0:\n        return 0\n    return 4 + welle(n - 1)\nrunde += 1\nif runde % 3 == 0:\n    mein_leben += welle(runde // 3 + 1)\nelse:\n    leben -= welle(runde % 3 + 2)' },
+});
+Object.assign(ENCOUNTERS, {
+  schleim: ['spiegelschleim'],
+  turm: ['turmwaechter'],
+  rabe: ['rekursionsrabe'],
+  schleim_rabe: ['spiegelschleim', 'rekursionsrabe'],
+  turm_schleim: ['turmwaechter', 'spiegelschleim'],
+  ritter: ['spiegelritter'],
+  boss3: ['spiegelkoenigin'],
+});
+
+Object.assign(CARDS, {
+  formel: { act: 3, name: 'Zauberformel', cost: 1, concept: 'rekursion', type: 'angriff', target: true,
+    code: 'def stark(x):\n    return x * 2 + staerke\nziel_leben -= stark(4)', text: 'Eine Funktion mit Parameter x gibt x · 2 + Stärke zurück. stark(4) trifft.',
+    up: { code: 'def stark(x):\n    return x * 2 + staerke\nziel_leben -= stark(6)', text: 'stark(6) trifft.' } },
+  turmbau: { act: 3, name: 'Turmbau', cost: 1, concept: 'rekursion', type: 'skill',
+    code: 'def turm(h):\n    if h == 0:\n        return 0\n    return h + turm(h - 1)\nblock += turm(4)', text: 'turm(4) = 4 + 3 + 2 + 1 = 10 Block, rekursiv gestapelt.',
+    up: { code: 'def turm(h):\n    if h == 0:\n        return 0\n    return h + turm(h - 1)\nblock += turm(5)', text: 'turm(5) = 15 Block.' } },
+  fakultaet: { act: 3, name: 'Fakultät', cost: 2, concept: 'rekursion', type: 'angriff', target: true,
+    code: 'def fak(n):\n    if n <= 1:\n        return 1\n    return n * fak(n - 1)\nziel_leben -= fak(4)', text: 'fak(4) = 4 · 3 · 2 · 1 = 24 Schaden.',
+    up: { code: 'def fak(n):\n    if n <= 1:\n        return 1\n    return n * fak(n - 1)\nziel_leben -= fak(4) + 6', text: 'fak(4) + 6 = 30 Schaden.' } },
+  teilen: { act: 3, name: 'Teile und herrsche', cost: 2, concept: 'rekursion', type: 'angriff',
+    code: 'def halb(n):\n    if n < 3:\n        return n\n    return halb(n // 2) + halb(n - n // 2)\nfor i in range(len(gegner_leben)):\n    gegner_leben[i] -= halb(7)', text: 'halb teilt die 7 immer weiter auf und zählt die Teile wieder zusammen: Jeder Gegner bekommt 7. Viele Aufrufe, viele Schritte!',
+    up: { code: 'def halb(n):\n    if n < 3:\n        return n\n    return halb(n // 2) + halb(n - n // 2)\nfor i in range(len(gegner_leben)):\n    gegner_leben[i] -= halb(10)', text: 'Jeder Gegner bekommt halb(10) = 10.' } },
+  rueckweg: { act: 3, name: 'Rückweg', cost: 1, concept: 'rekursion', type: 'skill', target: true,
+    code: 'def stufe(n):\n    if n == 0:\n        return 1\n    return 2 * stufe(n - 1)\nziel_schwach += 1\nblock += stufe(3)', text: 'stufe(3) verdoppelt dreimal: 8 Block. Das Ziel wird schwach.',
+    up: { code: 'def stufe(n):\n    if n == 0:\n        return 1\n    return 2 * stufe(n - 1)\nziel_schwach += 2\nblock += stufe(3) + 2', text: '10 Block, das Ziel 2 Züge schwach.' } },
+});
+
+Object.assign(BUGS, {
+  ohne_abbruch: { name: 'Ohne Abbruch', cost: 1, concept: 'rekursion', type: 'angriff', bug: true,
+    code: 'def welle(n):\n    return n + welle(n - 1)\nziel_leben -= welle(3)',
+    text: 'Bug: Die Funktion ruft sich endlos selbst auf. Der Zauber verheddert sich.',
+    ziel: 'welle(n) soll n + (n - 1) + … + 1 berechnen und bei n == 0 mit 0 aufhören. Die Karte zieht welle(3) = 6 von ziel_leben ab.',
+    loesung: 'def welle(n):\n    if n == 0:\n        return 0\n    return n + welle(n - 1)\nziel_leben -= welle(3)',
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 20 }, { ziel_leben: 50 }],
+    hinweise: ['Jede Rekursion braucht einen Abbruch: einen Fall, in dem die Funktion sich NICHT selbst aufruft.', 'Bei n == 0 soll welle einfach 0 zurückgeben.', 'Füge vor der return-Zeile ein: if n == 0: und eingerückt return 0.'],
+    repariert: { name: 'Gezähmte Welle', cost: 1, text: 'Repariert: welle(3) = 6 Schaden, und die Rekursion hört sauber auf.' } },
+});
+BUG_BY_NAME['Ohne Abbruch'] = 'ohne_abbruch';
+
+Object.assign(FORGES, {
+  erste_funktion: {
+    titel: 'Erste Funktion', stufe: 'leicht', modus: 'parsons', konzepte: ['rekursion'],
+    auftrag: 'Lege eine Funktion verdopple(x) an, die x * 2 zurückgibt. Rufe sie danach mit 5 auf und ziehe das Ergebnis von ziel_leben ab.',
+    zeilen: ['def verdopple(x):', '    return x * 2', 'ziel_leben -= verdopple(5)'],
+    falsch: ['    print(x * 2)'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 30 }, { ziel_leben: 10 }],
+    hinweise: ['Erst wird die Funktion angelegt (def), erst danach aufgerufen.', 'print zeigt nur etwas an. Damit der Aufrufer weiterrechnen kann, braucht es return.', 'def verdopple(x):, eingerückt return x * 2, dann ziel_leben -= verdopple(5).'],
+    karte: { name: 'Doppelfunktion', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: deine erste eigene Funktion.' },
+  },
+  countdown: {
+    titel: 'Countdown', stufe: 'leicht', modus: 'parsons', konzepte: ['rekursion'],
+    auftrag: 'Die Funktion zaehle(n) soll für jeden Schritt von n bis 1 zwei Punkte zählen und bei n == 0 mit 0 aufhören. Ziehe zaehle(5) von ziel_leben ab.',
+    zeilen: ['def zaehle(n):', '    if n == 0:', '        return 0', '    return 2 + zaehle(n - 1)', 'ziel_leben -= zaehle(5)'],
+    falsch: ['    return 2 + zaehle(n)'],
+    pruefe: ['ziel_leben'],
+    tests: [{ ziel_leben: 30 }, { ziel_leben: 12 }],
+    hinweise: ['Erst der Abbruch (n == 0), dann der Selbstaufruf.', 'zaehle(n) ruft sich mit demselben n auf und hört nie auf. Es muss n - 1 sein.', 'def zaehle(n): / if n == 0: return 0 / return 2 + zaehle(n - 1).'],
+    karte: { name: 'Countdown', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: zaehle(5) = 10 Schaden, rekursiv.' },
+  },
+  summenturm: {
+    titel: 'Summenturm', stufe: 'schwer', modus: 'frei', konzepte: ['rekursion'], maxZeilen: 5, versiegelt: ['sum', 'range'],
+    auftrag: 'Schreibe eine rekursive Funktion summe(n), die 1 + 2 + … + n berechnet (summe(0) ist 0). Ohne Schleife, ohne sum und range! Erhöhe block um summe(4).',
+    vorlage: '# Variable: block\n',
+    loesung: 'def summe(n):\n    if n == 0:\n        return 0\n    return n + summe(n - 1)\nblock += summe(4)',
+    zeilen: ['def summe(n):', '    if n == 0:', '        return 0', '    return n + summe(n - 1)', 'block += summe(4)'],
+    falsch: ['    return summe(n - 1)'],
+    pruefe: ['block'],
+    tests: [{ block: 0 }, { block: 7 }],
+    hinweise: ['Überlege: summe(4) = 4 + summe(3). Und summe(0) = 0.', 'Der Abbruch ist n == 0. Sonst gib n + summe(n - 1) zurück.', 'def summe(n):\n    if n == 0:\n        return 0\n    return …'],
+    karte: { name: 'Summenturm', cost: 1, type: 'skill', text: 'Deine geschmiedete Karte: summe(4) = 10 Block, rekursiv.' },
+  },
+  groesste: {
+    titel: 'Der Größte', stufe: 'schwer', modus: 'frei', konzepte: ['rekursion', 'if'], maxZeilen: 7, versiegelt: ['max'],
+    auftrag: 'Schreibe eine rekursive Funktion groesste(liste), die den größten Wert einer Liste zurückgibt (ohne max). Hat die Liste nur einen Wert, ist es dieser. Ziehe groesste(gegner_leben) von ziel_leben ab.',
+    vorlage: '# Variablen: gegner_leben (Liste), ziel_leben\n',
+    loesung: 'def groesste(liste):\n    if len(liste) == 1:\n        return liste[0]\n    rest = groesste(liste[1:])\n    if liste[0] > rest:\n        return liste[0]\n    return rest\nziel_leben -= groesste(gegner_leben)',
+    zeilen: ['def groesste(liste):', '    if len(liste) == 1:', '        return liste[0]', '    rest = groesste(liste[1:])', '    if liste[0] > rest:', '        return liste[0]', '    return rest', 'ziel_leben -= groesste(gegner_leben)'],
+    falsch: ['    rest = groesste(liste)'],
+    pruefe: ['ziel_leben'],
+    tests: [{ gegner_leben: [12, 30, 7], ziel_leben: 50 }, { gegner_leben: [9], ziel_leben: 20 }, { gegner_leben: [4, 4, 11, 2], ziel_leben: 15 }],
+    hinweise: ['Abbruch: Bei nur einem Element ist es das Größte.', 'Frag die Funktion nach dem Größten im Rest der Liste: groesste(liste[1:]). Vergleiche das mit liste[0].', 'rest = groesste(liste[1:]), dann: if liste[0] > rest: return liste[0], sonst return rest.'],
+    karte: { name: 'Der Größte', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: Schaden in Höhe des stärksten Gegners.' },
+  },
+});
+Object.assign(FORGE_LEVEL, { erste_funktion: 'leicht', countdown: 'leicht', summenturm: 'schwer', groesste: 'schwer' });
+
+Object.assign(RIDDLES, {
+  fak3: { concept: 'rekursion', var: 'x', code: 'def fak(n):\n    if n <= 1:\n        return 1\n    return n * fak(n - 1)\nx = fak(3)',
+    erklaerung: 'fak(3) = 3 · fak(2) = 3 · 2 · fak(1) = 3 · 2 · 1 = 6.' },
+  fib5: { concept: 'rekursion', var: 'x', code: 'def f(n):\n    if n < 2:\n        return n\n    return f(n - 1) + f(n - 2)\nx = f(5)',
+    erklaerung: 'f(0)=0, f(1)=1, f(2)=1, f(3)=2, f(4)=3, f(5)=5. Jede Zahl ist die Summe der beiden davor (Fibonacci).' },
+  frueh: { concept: 'rekursion', var: 'x', code: 'def g(z):\n    if z > 3:\n        return 1\n    return 2\nx = g(5) + g(1)',
+    erklaerung: 'g(5): 5 > 3, also return 1, die Funktion endet sofort. g(1): Bedingung falsch, also 2. Zusammen 3.' },
+  halbieren2: { concept: 'rekursion', var: 'x', code: 'def h(n):\n    if n <= 1:\n        return 0\n    return 1 + h(n // 2)\nx = h(16)',
+    erklaerung: '16 → 8 → 4 → 2 → 1: viermal halbiert, also 4. So schnell schrumpft eine Rekursion, die halbiert.' },
+});
+
+export const MAP_PLAN_3 = [
+  { typ: 'kampf', pool: ['schleim', 'turm'] },
+  { zufall: { kampf: 3, raetsel: 2, haendler: 1 }, pool: ['schleim', 'turm', 'rabe'] },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['schleim', 'rabe'], forges: ['erste_funktion', 'countdown'] },
+  { zufall: { kampf: 3, elite: 2, rast: 1 }, pool: ['rabe', 'turm', 'schleim'], elite: 'ritter' },
+  { zufall: { haendler: 1, rast: 1, raetsel: 1 } },
+  { zufall: { debug: 1, kampf: 1, rast: 1 }, pool: ['schleim_rabe', 'turm_schleim'] },
+  { zufall: { kampf: 3, elite: 1, raetsel: 1 }, pool: ['schleim_rabe', 'turm_schleim'], elite: 'ritter' },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['schleim_rabe', 'turm_schleim'], forges: ['summenturm', 'groesste'] },
+  { zufall: { kampf: 2, haendler: 1, raetsel: 1 }, pool: ['turm_schleim', 'schleim_rabe'] },
+  { typ: 'rast' },
+];
+Object.assign(ACTS[3], {
+  bald: false, plan: MAP_PLAN_3, boss: 'boss3',
+  intro: 'Im Spiegelturm rechnen alle mit Funktionen: def legt sie an, return gibt ein Ergebnis zurück. Und manche rufen sich selbst auf (Rekursion). Spiegelschleime teilen sich, wenn sie fallen, in zwei halb so große, bis sie zu klein sind. Wie eine Rekursion mit Abbruch!',
+  geschenk: ['formel', 'turmbau'], konzept: 'rekursion',
+});

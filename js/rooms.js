@@ -270,11 +270,12 @@ function finishForge(key, f, st, code, done) {
 export function debugRoom(done) {
   const run = game.run;
   let card = run.deck.find((c) => BUGS[c.id]);
+  const bugId = (run.act ?? 1) >= 3 ? 'ohne_abbruch' : 'zaunpfahl';
   let intro = '';
   if (!card) {
-    card = makeCard('zaunpfahl');
+    card = makeCard(bugId);
     run.deck.push(card);
-    intro = '<p class="warn">Ein Bug ist in dein Deck gekrochen: <b>Zaunpfahl</b>. Repariere ihn gleich hier!</p>';
+    intro = `<p class="warn">Ein Bug ist in dein Deck gekrochen: <b>${esc(BUGS[bugId].name)}</b>. Repariere ihn gleich hier!</p>`;
   }
   const bug = BUGS[card.id];
   const st = { code: bug.code, attempts: 0, hintsShown: 0, hintsPaid: 0, expPenalty: 0, fails: [], pauseUntil: 0, result: null, error: null };

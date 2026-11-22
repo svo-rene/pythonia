@@ -2,7 +2,7 @@
 import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES, ZEIT_PRO_ZUG } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { explainCode } from './explain.js';
-import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds } from './tutorial.js';
+import { tutorialSeen, tutorialCombat, tutorialAct2, tutorialBuilds, tutorialAct3 } from './tutorial.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
 import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
@@ -24,7 +24,7 @@ export function startCombat(encId, kind, done) {
       const e = ENEMIES[id];
       const stufe = run.stufe ?? 0;
       const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
-      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 }, intent: null, boss: e.boss, elite: e.elite };
+      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 }, intent: null, boss: e.boss, elite: e.elite, teilt: e.teilt };
     }),
     rule: null,       // Sonderregel (Boss immer, Elite ab Stufe 2)
     hpStart: run.hp,
@@ -67,6 +67,7 @@ export function startCombat(encId, kind, done) {
   runRelics('kampf_start');
   startTurn();
   if (!tutorialSeen('kampf')) setTimeout(tutorialCombat, 400);
+  else if ((run.act ?? 1) >= 3 && !tutorialSeen('akt3')) setTimeout(tutorialAct3, 400);
   else if ((run.act ?? 1) >= 2 && !tutorialSeen('akt2')) setTimeout(tutorialAct2, 400);
   else if (builds() && !tutorialSeen('builds')) setTimeout(tutorialBuilds, 400);
 }
@@ -112,7 +113,33 @@ function cardCost(def) {
   return c;
 }
 const alive = () => C.enemies.filter((e) => e.hp > 0);
-const builds = () => !!game.meta.builds;   // Spielweisen (nach dem ersten Sieg über Akt 1)
+const builds = () => !!game.meta.builds;
+
+/** Akt 3: Gefallene Spiegelschleime teilen sich in zwei halb so große, bis sie zu klein sind (wie eine Rekursion mit Abbruch). */
+function splitDead() {
+  let spawned = 0;
+  for (const e of [...C.enemies]) {
+    if (!e.teilt || e.hp > 0 || e.gespalten) continue;
+    e.gespalten = true;
+    const half = Math.floor(e.maxHp / 2);
+    if (half < 6 || C.enemies.filter((x) => !x.gespalten).length > 5) continue;
+    for (let k = 0; k < 2; k++) {
+      C.enemies.push({ ...e, hp: half, maxHp: half, gespalten: false, intent: null,
+        mem: JSON.parse(JSON.stringify(e.mem)), st: { brand: 0, schwach: 0, verwundbar: 0, frost: 0 } });
+      spawned++;
+    }
+  }
+  if (spawned) {
+    C.message = `${C.message ? `${C.message}<br>` : ''}🪞 Ein Spiegelschleim teilt sich in zwei kleinere!`;
+    fixTarget();
+    updateIntents();
+  }
+}
+/** Sind alle Gegner besiegt? Teilt vorher gefallene Spiegelschleime. */
+function allDead() {
+  splitDead();
+  return alive().length === 0;
+}   // Spielweisen (nach dem ersten Sieg über Akt 1)
 const speed = () => ({ schnell: 0.35, turbo: 0.02 }[game.meta.settings.tempo] ?? 1);   // turbo: nur für den Testbot
 
 function drawCards(n) {
@@ -129,7 +156,7 @@ function drawCards(n) {
 function startTurn() {
   C.turn++;
   C.combo = 0;
-  if ((game.run.act ?? 1) >= 2) C.zeit = ZEIT_PRO_ZUG;   // Komplexität: Rechenschritte pro Zug
+  if ((game.run.act ?? 1) >= 2) C.zeit = ZEIT_PRO_ZUG + 10 * ((game.run.act ?? 2) - 2);   // Komplexität: Rechenschritte pro Zug, später etwas mehr
   C.energie = 3 + (C.turn === 1 && hasSkill('fruehstart') ? 1 : 0);
   C.maxEnergie = Math.max(3, C.energie);
   if (C.turn > 1) C.block = hasTalent('frost2') ? Math.floor(C.block / 2) : 0;
@@ -511,7 +538,7 @@ async function endTurn() {
   game.run.stats.turnsTaken++;
   if (runRelics('zug_ende')) {
     updateIntents();
-    if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+    if (allDead()) { C.busy = false; checkEnd(); return; }
   }
   C.discard.push(...C.hand);
   C.hand = [];
@@ -528,7 +555,7 @@ async function endTurn() {
     C.message = `🐺 Deine Begleiter greifen an: ${total} Schaden.`;
     render();
     await sleep(700 * speed());
-    if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+    if (allDead()) { C.busy = false; checkEnd(); return; }
   }
   if (builds()) {
     const burns = [];
@@ -542,7 +569,7 @@ async function endTurn() {
       C.message = burns.join(' · ');
       render();
       await sleep(700 * speed());
-      if (alive().length === 0) { C.busy = false; checkEnd(); return; }
+      if (allDead()) { C.busy = false; checkEnd(); return; }
     }
   }
   for (const e of C.enemies) {
@@ -627,7 +654,7 @@ function checkEnd() {
     setTimeout(() => onEnd({ won: false }), 900);
     return true;
   }
-  if (alive().length === 0) {
+  if (allDead()) {
     C.busy = true;
     runRelics('kampf_ende');
     if (game.run.hp >= C.hpStart) unlockAchievement('unverwundbar');
@@ -664,6 +691,7 @@ function render() {
   C.shown.player = playerHp;
 
   const enemies = C.enemies.map((e, i) => {
+    if (e.gespalten) return '';   // geteilter Schleim: seine beiden Hälften stehen dahinter
     const hp = e.hp;
     const dead = hp <= 0;
     const acting = v?.kind === 'enemy' && v.enemy === e;
@@ -705,7 +733,7 @@ function render() {
   app().innerHTML = `
   <div class="combat">
     ${C.rule ? `<div class="rule-banner" title="${esc(RULES[C.rule].code)}">⚠ <b>${esc(RULES[C.rule].name)}</b> · ${esc(RULES[C.rule].text)}</div>` : ''}
-    <div class="stage ${C.kind} foes-${C.enemies.length}">
+    <div class="stage ${C.kind} foes-${Math.min(4, C.enemies.filter((e) => !e.gespalten).length)}">
       <div class="relic-strip">${run.relics.map((id) => `<button class="ricon ${Date.now() - (C.fired[id] ?? 0) < 1500 ? 'fired' : ''}" title="${esc(RELICS[id].name)}: ${esc(relicCode(id))}">${RELICS[id].icon}</button>`).join('')}</div>
       <div class="side-panel left">${left}</div>
       <div class="fighter hero ${casting ? 'casting' : ''} ${pHit.cls}">
