@@ -481,3 +481,4 @@ table.explain td { border-top: 1px solid var(--line); padding: 6px 8px; vertical
   .foes { justify-content: center; flex-wrap: wrap; }
   .stage.foes-3 .foe, .stage.foes-4 .foe { width: auto; flex: 1 1 0; min-width: 140px; max-width: 230px; }
 }
+.card[data-steps] .card-head { padding-right: 36px; }
