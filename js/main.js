@@ -15,7 +15,7 @@ function topbar() {
   const s = game.meta.settings;
   const el = document.getElementById('topbar');
   el.innerHTML = `
-    <button class="brand" data-go="title">🐍 Pythonia</button>
+    <button class="brand" data-go="title"><img class="logo-small" src="assets/logo.svg" alt=""> Pythonia</button>
     ${run ? `<span class="pill">❤ ${run.hp}/${run.maxHp}</span><span class="pill">💰 ${run.gold}</span>
       <span class="pill" title="Erfahrung">Lv ${run.level} · ${run.exp}/${EXP_PER_LEVEL} EXP</span>
       <button class="pill btnlike" data-go="deck">🂠 Deck ${run.deck.length}</button>
@@ -53,7 +53,8 @@ function showTitle() {
   const run = game.run;
   const m = game.meta;
   app().innerHTML = `<div class="title-screen">
-    <h1>🐍 Pythonia</h1>
+    <img class="logo-big" src="assets/logo.svg" alt="">
+    <h1>Pythonia</h1>
     <p class="subtitle">Die Höhle der Verzweigungen</p>
     <p class="sub">Ein Deckbuilder, in dem deine Zauber Python sind.<br>Lies Code im Kampf, schreibe Code in der Schmiede, repariere Bugs.</p>
     <div class="menu">

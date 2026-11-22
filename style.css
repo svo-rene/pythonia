@@ -379,3 +379,9 @@ table.trace table.vars { font-size: 12px; }
 @media (max-width: 800px) { .review-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .title-screen .subtitle { margin: -10px 0 14px; font-size: 1.25em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); }
+
+/* Logo */
+.brand { display: inline-flex; align-items: center; gap: 6px; }
+.logo-small { width: 24px; height: 24px; }
+.logo-big { width: 120px; height: 120px; display: block; margin: 0 auto 4px; filter: drop-shadow(0 0 18px rgba(255, 204, 77, 0.35)); }
+.title-screen h1 { letter-spacing: 0.04em; background: linear-gradient(#ffe08a, #e09a2a); -webkit-background-clip: text; background-clip: text; color: transparent; }
