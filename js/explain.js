@@ -23,12 +23,25 @@ const VARS = {
   typ: 'die Art der gespielten Karte: "angriff" oder "skill"',
   kosten: 'wie viel Energie die gespielte Karte gekostet hat',
   i: 'eine Zählvariable der Schleife',
+  kristalle: 'deine Kristall-Liste: Zahlen, die du sammelst und wirfst. Sie bleibt im ganzen Kampf erhalten',
+  echo: 'eine Liste, die sich der Gegner merkt und die jede Runde wächst',
+  minen: 'eine Liste mit Minen; die vorderste explodiert',
+  koepfe: 'die Liste der Köpfe der Hydra; jeder greift an',
+  stapel: 'der Zahlenstapel des Bosses'
 };
 
 // Begriffe, die im Code vorkommen können
 const CONCEPTS = [
   { test: /\[[^\]]*\]|\bgegner_leben\b|\bgegner_angriff\b|\bhand\b/, name: 'Liste',
     text: 'Eine Liste speichert mehrere Werte in einer Variablen, z. B. <code>gegner_leben = [20, 14]</code>. Jeder Wert hat eine Position, den <b>Index</b>. Gezählt wird ab <b>0</b>: <code>gegner_leben[0]</code> ist der erste Gegner, <code>gegner_leben[1]</code> der zweite.', list: true },
+  { test: /\.append\(/, name: 'append()', text: '<code>liste.append(x)</code> hängt x <b>hinten</b> an die Liste an. Aus <code>[4, 9]</code> wird mit <code>append(2)</code> die Liste <code>[4, 9, 2]</code>.' },
+  { test: /\.pop\(/, name: 'pop()', text: '<code>liste.pop()</code> nimmt das <b>letzte</b> Element heraus und gibt es zurück. <code>pop(0)</code> nimmt das <b>erste</b>. Bei einer leeren Liste gibt es einen Fehler!' },
+  { test: /\.sort\(|\bsorted\(/, name: 'sort()', text: '<code>liste.sort()</code> ordnet die Liste aufsteigend, die kleinste Zahl steht vorn, die größte hinten. Danach holt <code>pop()</code> also die größte.' },
+  { test: /\.insert\(/, name: 'insert()', text: '<code>liste.insert(0, x)</code> fügt x an Position 0 ein, also ganz vorn. Alle anderen rücken einen Platz nach hinten.' },
+  { test: /\.reverse\(/, name: 'reverse()', text: '<code>liste.reverse()</code> dreht die Reihenfolge um: aus <code>[1, 5, 3]</code> wird <code>[3, 5, 1]</code>.' },
+  { test: /\[\s*-?\d*\s*:\s*-?\d*\s*\]/, name: 'Slicing [a:b]', text: '<code>liste[1:3]</code> ist ein Ausschnitt: die Positionen 1 und 2 (die 3 nicht mehr). <code>liste[:2]</code> sind die ersten beiden.' },
+  { test: /\[-1\]/, name: 'Index -1', text: '<code>liste[-1]</code> ist das letzte Element, <code>liste[-2]</code> das vorletzte.' },
+  { test: /\b(sum|max|min)\(/, name: 'sum(), max(), min()', text: '<code>sum(liste)</code> addiert alle Werte, <code>max(liste)</code> ist der größte, <code>min(liste)</code> der kleinste.' },
   { test: /\blen\(/, name: 'len()', text: '<code>len(liste)</code> sagt, wie viele Einträge eine Liste hat. Bei <code>[20, 14]</code> ist das 2.' },
   { test: /\brange\(/, name: 'range()', text: '<code>range(3)</code> liefert die Zahlen 0, 1, 2. Es fängt bei 0 an und hört <b>vor</b> der 3 auf. <code>range(1, 4)</code> liefert 1, 2, 3.' },
   { test: /^\s*for\b/m, name: 'for-Schleife', text: 'Eine for-Schleife wiederholt die eingerückten Zeilen darunter, einmal für jeden Wert. Was eingerückt ist, gehört zur Schleife.' },
@@ -79,6 +92,12 @@ export function explainLine(raw) {
   if ((m = line.match(/^while (.+):$/))) return `<b>Solange</b> ${condText(m[1])}, wiederholt er die eingerückten Zeilen.`;
   if ((m = line.match(/^(\w+) = int\(input\((.*)\)\)$/))) return `Fragt dich beim Ausspielen nach einer Zahl und speichert sie in ${c(m[1])}.`;
   if ((m = line.match(/^ziehe\((.+)\)$/))) return `Du ziehst ${c(m[1])} Karten.`;
+  if ((m = line.match(/^(\w+)\.append\((.+)\)$/))) return `Hängt ${c(m[2])} hinten an die Liste ${c(m[1])} an.`;
+  if ((m = line.match(/^(\w+)\.pop\(\)$/))) return `Nimmt das letzte Element aus ${c(m[1])} heraus. Es ist danach weg.`;
+  if ((m = line.match(/^(\w+)\.pop\(0\)$/))) return `Nimmt das erste Element aus ${c(m[1])} heraus. Es ist danach weg.`;
+  if ((m = line.match(/^(\w+)\.sort\(\)$/))) return `Sortiert ${c(m[1])} aufsteigend: die kleinste Zahl vorn, die größte hinten.`;
+  if ((m = line.match(/^(\w+)\.reverse\(\)$/))) return `Dreht die Reihenfolge von ${c(m[1])} um.`;
+  if ((m = line.match(/^(\w+)\.insert\((.+?),\s*(.+)\)$/))) return `Fügt ${c(m[3])} an Position ${c(m[2])} in ${c(m[1])} ein. Die anderen rücken nach hinten.`;
   if (line === 'pass') return 'Tut nichts.';
   if ((m = line.match(/^([\w[\]]+)\s*(\+=|-=|\*=|\/\/=)\s*(.+)$/))) {
     const t = targetText(m[1]);

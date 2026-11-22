@@ -187,3 +187,13 @@ export function tutorialReward() {
   ]);
 }
 
+
+export function tutorialAct2() {
+  runTutorial('akt2', [
+    { sel: '.kristalle', text: '<b>Neu in den Listengruben:</b> deine Liste <code>kristalle</code>. Jedes blaue Kästchen ist ein Kristall, darunter steht sein <b>Index</b> (die Position, ab 0 gezählt).' },
+    { sel: card('Kristall formen'), text: '<b>Kristall formen</b> hängt mit <code>append()</code> einen Kristall hinten an die Liste. Tippe die Karte an.', until: () => !!document.querySelector('.sel-bar') },
+    { sel: '.sel-bar .play', text: 'Ausspielen!', click: true },
+    { sel: '.kristalle', text: 'Schau auf die Liste …', until: () => idle() },
+    { sel: '.kristalle', text: 'Da ist der Kristall! <b>Kristallwurf</b> nimmt mit <code>pop()</code> den <b>letzten</b> Kristall heraus und wirft ihn. Und Vorsicht: Manche Gegner stehlen Kristalle oder drehen deine Liste um.' },
+  ]);
+}

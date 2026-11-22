@@ -2,7 +2,7 @@
 import { ENEMIES, ENCOUNTERS, BUGS, BUG_BY_NAME, HEROES, RELICS, RULES } from './data.js';
 import { relicCode, showRelics, unlockAchievement } from './relics.js';
 import { explainCode } from './explain.js';
-import { tutorialSeen, tutorialCombat } from './tutorial.js';
+import { tutorialSeen, tutorialCombat, tutorialAct2 } from './tutorial.js';
 import { heroSprite, enemySprite } from './sprites.js';
 import { cardFx, enemyFx } from './fx.js';
 import { game, save, shuffle, rng, cardDef, hasTalent, hasSkill, makeCard } from './state.js';
@@ -23,7 +23,7 @@ export function startCombat(encId, kind, done) {
       const e = ENEMIES[id];
       const stufe = run.stufe ?? 0;
       const hp = Math.round(e.hp * (stufe >= 1 ? 1.15 : 1) * (e.boss && stufe >= 5 ? 1.25 : 1));
-      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: { ...(e.mem ?? {}) }, intent: null, boss: e.boss, elite: e.elite };
+      return { id, name: e.name, hp, maxHp: hp, code: e.code, mem: JSON.parse(JSON.stringify(e.mem ?? {})), intent: null, boss: e.boss, elite: e.elite };
     }),
     rule: null,       // Sonderregel (Boss immer, Elite ab Stufe 2)
     hpStart: run.hp,
@@ -47,15 +47,23 @@ export function startCombat(encId, kind, done) {
     const keys = Object.keys(RULES);
     C.rule = keys[Math.floor(rng() * keys.length)];
   }
+  C.kristalle = [];    // Akt 2: Kristall-Liste, bleibt während des Kampfs erhalten
   C.relicMem = {};     // merk-Variable je Relikt, bleibt im Kampf erhalten
   C.relicLog = [];
   C.fired = {};
   if (hasTalent('glut2')) C.staerke += 1;
   if (hasSkill('kraftreserve')) C.staerke += 1;
   if (hasTalent('frost1')) C.block += 4;
+  // Einführung: die gezeigten Karten sicher auf die Starthand legen (gezogen wird von hinten)
+  const tutCards = !tutorialSeen('kampf') ? ['funke', 'schutz'] : (run.act ?? 1) >= 2 && !tutorialSeen('akt2') ? ['kristall'] : [];
+  for (const id of tutCards) {
+    const i = C.draw.findIndex((u) => cardByUid(u)?.id === id);
+    if (i >= 0) C.draw.push(...C.draw.splice(i, 1));
+  }
   runRelics('kampf_start');
   startTurn();
   if (!tutorialSeen('kampf')) setTimeout(tutorialCombat, 400);
+  else if ((run.act ?? 1) >= 2 && !tutorialSeen('akt2')) setTimeout(tutorialAct2, 400);
 }
 
 /** Ruft alle Relikte eines Zeitpunkts auf, in der Reihenfolge des Spielers. Jedes sieht die Werte nach dem vorigen. */
@@ -147,8 +155,10 @@ function fixTarget() {
 
 // ---------- Gegner ----------
 function enemyVars(e) {
-  return { mein_leben: e.hp, leben: game.run.hp, block: C.block, ...e.mem };
+  return { mein_leben: e.hp, leben: game.run.hp, block: C.block, ...(game.run.act >= 2 ? { kristalle: [...C.kristalle] } : {}), ...e.mem };
 }
+
+const fmtVal = (v) => (Array.isArray(v) ? `[${v.join(', ')}]` : String(v));
 
 /** Absicht vorab berechnen (Probelauf mit dem aktuellen Zustand). */
 function updateIntents() {
@@ -164,8 +174,9 @@ function updateIntents() {
     if ((v.mein_leben ?? e.hp) > e.hp) parts.push(`✚ heilt ${v.mein_leben - e.hp}`);
     for (const k of Object.keys(e.mem)) {
       if (k === 'fluch') { if (v.fluch) parts.push(`🐞 legt „${v.fluch}“ in dein Deck`); continue; }
-      if (k !== 'runde' && v[k] !== start[k]) parts.push(`▲ ${k} wird ${v[k]}`);
+      if (k !== 'runde' && JSON.stringify(v[k]) !== JSON.stringify(start[k])) parts.push(`▲ ${k} wird ${fmtVal(v[k])}`);
     }
+    if (start.kristalle && JSON.stringify(v.kristalle) !== JSON.stringify(start.kristalle)) parts.push('💎 verändert deine Kristalle');
     e.intent = { dmg, summary: parts.join(' · ') || 'nichts' };
   }
 }
@@ -184,6 +195,7 @@ function baseVars() {
     ziel_angriff: t?.intent ? t.intent.dmg : 0,
     gegner_leben: live.map((e) => e.hp),
     gegner_angriff: live.map((e) => e.intent?.dmg ?? 0),
+    ...(game.run.act >= 2 ? { kristalle: [...C.kristalle] } : {}),
     hand: [],
   };
 }
@@ -351,6 +363,10 @@ function trackStats(def, start, v, mult, prediction) {
   if (st.predRight >= 3) unlockAchievement('hellseher');
 }
 
+function setKristalle(list) {
+  if (Array.isArray(list)) C.kristalle = list.map((x) => num(x, 0)).slice(0, 12);
+}
+
 function applyCardResult(start, v, mult) {
   const run = game.run;
   run.hp = Math.max(0, Math.min(run.maxHp, num(v.leben, start.leben)));
@@ -359,6 +375,7 @@ function applyCardResult(start, v, mult) {
   C.block = Math.max(0, start.block + blockGain);
   C.energie = Math.max(0, num(v.energie, start.energie));
   C.staerke = num(v.staerke, start.staerke);
+  setKristalle(v.kristalle);
   for (const { e, d } of enemyDeltas(start, v)) {
     const dd = d > 0 ? Math.ceil(d * mult) : d;
     e.hp = Math.max(0, Math.min(e.maxHp, e.hp - dd));
@@ -443,6 +460,7 @@ function applyEnemyResult(e, start, v) {
     if (k === 'fluch') continue;
     if (v[k] !== undefined) e.mem[k] = v[k];
   }
+  setKristalle(v.kristalle);
   if (v.fluch) {
     const bugId = BUG_BY_NAME[v.fluch];
     if (bugId) {
@@ -505,7 +523,7 @@ function render() {
     const hit = hitInfo(C.shown.enemies[i], hp);
     C.shown.enemies[i] = hp;
     const mem = Object.keys(e.mem).filter((k) => k !== 'fluch')
-      .map((k) => `<span class="mem">${esc(k)} = ${esc(e.mem[k])}</span>`).join('');
+      .map((k) => `<span class="mem">${esc(k)} = ${esc(fmtVal(e.mem[k]))}</span>`).join('');
     return `<div class="fighter foe ${targeted ? 'targeted' : ''} ${dead ? 'dead' : ''} ${acting ? 'acting' : ''} ${e.boss ? 'boss' : ''} ${hit.cls}" data-target="${i}">
       <div class="over">
         ${dead ? '' : `<div class="intent">
@@ -549,6 +567,7 @@ function render() {
             ${playerBlock > 0 ? `<span class="block-badge" title="Block">⛨ ${playerBlock}</span>` : ''}
             <div class="bar"><div class="fill php" style="width:${(100 * playerHp) / run.maxHp}%"></div><span>${playerHp} / ${run.maxHp}</span></div>
           </div>
+          ${run.act >= 2 ? `<div class="kristalle" title="Deine Liste kristalle"><code>kristalle</code>${C.kristalle.map((k, i) => `<span class="kr"><b>${k}</b><small>[${i}]</small></span>`).join('') || '<span class="kr-empty">= [ ]</span>'}</div>` : ''}
         </div>
         <div class="fig" style="${bob()}">${heroSprite(run.hero)}${pHit.pop}</div>
         <div class="fname">${esc(heroName)}</div>

@@ -1,10 +1,10 @@
 // Einstieg: Titel, Karte des Akts, Talentbaum, Run-Ende, Einstellungen.
-import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN } from './data.js';
+import { ROOM_INFO, TALENTS, CONCEPTS, EXP_PER_LEVEL, RUN_SKILLS, HEROES, CARDS, FORGE_LEVEL, RELICS, EVOLUTIONS, FORGES, ACHIEVEMENTS, RIDDLES, STUFEN, ACTS } from './data.js';
 import { eventRoom } from './events.js';
 import { showRelics, relicCode, relicView } from './relics.js';
 import { explainCode } from './explain.js';
 import { tutorialMap, resetTutorials } from './tutorial.js';
-import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable } from './state.js';
+import { game, save, load, newRun, cardDef, exportCode, importCode, resetAll, reachable, startNextAct } from './state.js';
 import { heroSprite } from './sprites.js';
 import { loadNatter } from './natter.js';
 import { startCombat, rerenderCombat } from './combat.js';
@@ -192,7 +192,7 @@ function showMap() {
   }).join('');
   const legend = Object.entries(ROOM_INFO).map(([k, i]) => `<li><span class="mnode mini ${k}"><span>${i.icon}</span></span>${i.name}</li>`).join('');
   app().innerHTML = `<div class="map">
-    <div class="map-head"><h2>Akt 1: Die Höhle der Verzweigungen</h2>
+    <div class="map-head"><h2>Akt ${run.act ?? 1}: ${esc(ACTS[run.act ?? 1].name)}</h2>
       <p class="hint">Wähle einen leuchtenden Raum. Du kannst nur den Linien nach oben folgen.</p></div>
     <div class="map-wrap">
       <div class="cave" style="height:${height}px">
@@ -230,7 +230,7 @@ function roomDone() {
   const run = game.run;
   run.pending = null;
   save();
-  if (run.pos === 'boss') { runOver(true); return; }
+  if (run.pos === 'boss') { if (ACTS[(run.act ?? 1) + 1]) actDone(); else runOver(true); return; }
   showMap();
 }
 
@@ -252,6 +252,23 @@ function enterRoom(node) {
   topbar();
 }
 
+// ---------- Akt geschafft ----------
+function actDone() {
+  const run = game.run;
+  const next = ACTS[run.act + 1];
+  topbar();
+  app().innerHTML = `<div class="title-screen act-done">
+    <img class="logo-big" src="assets/logo.svg" alt="">
+    <h1>Akt ${run.act} geschafft!</h1>
+    <p class="sub">Der Boss ist besiegt. Ein Gang führt tiefer hinab …</p>
+    <h2>Akt ${run.act + 1}: ${esc(next.name)}</h2>
+    <p class="act-intro">${esc(next.intro ?? '')}</p>
+    <p class="hint">Thema: <b>${esc(next.thema)}</b> · Du wirst vollständig geheilt.</p>
+    ${next.geschenk ? `<p>Als Geschenk bekommst du:</p><div class="card-grid">${next.geschenk.map((id) => cardView(CARDS[id], { lesehilfe: true })).join('')}</div>` : ''}
+    <div class="menu"><button class="btn big" data-a="go">Hinab in ${esc(next.name)}</button></div></div>`;
+  app().querySelector('[data-a="go"]').addEventListener('click', () => { startNextAct(); showMap(); });
+}
+
 // ---------- Run-Ende ----------
 function runOver(won) {
   const run = game.run;
@@ -265,8 +282,8 @@ function runOver(won) {
   save();
   topbar();
   app().innerHTML = `<div class="title-screen">
-    <h1>${won ? '♛ Sieg über den Verzweiger!' : 'Der Run ist vorbei'}</h1>
-    <p class="sub">${won ? 'Akt 1 ist geschafft. In Akt 2 warten Schleifen und Listen.' : 'Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.'}</p>
+    <h1>${won ? '♛ Pythonia ist bezwungen!' : 'Der Run ist vorbei'}</h1>
+    <p class="sub">${won ? `Du hast alle ${Object.keys(ACTS).length} Akte geschafft! Weitere Akte (Stapel, Warteschlangen und Klassen) folgen.` : `Du bist in Akt ${run.act ?? 1} gefallen. Kein Run ist verschwendet: Du bekommst trotzdem Talentpunkte.`}</p>
     <p>+${points} Talentpunkt${points === 1 ? '' : 'e'}${!won && run.elitesWon ? ` (1 + ${run.elitesWon} für Elite-Siege)` : ''}</p>
     <p class="hint">${run.path.length} ${run.path.length === 1 ? 'Raum' : 'Räume'} geschafft · Level ${run.level} · ${run.forgesDone.length} Schmieden gelöst${run.seedCode ? ` · Klassen-Code <b>${esc(run.seedCode)}</b>` : ''}${run.stufe ? ` · Stufe ${run.stufe}` : ''}</p>
     ${newStufe ? `<p class="good-note">⚔ Prüfungsstufe ${meta.stufeMax} freigeschaltet: ${esc(STUFEN[meta.stufeMax])}</p>` : ''}

@@ -333,7 +333,7 @@ export function shopRoom(done) {
   let healed = false;
   const render = () => {
     const removePrice = 50 + 25 * run.removeCount;
-    const locked = Object.entries(CONCEPTS).filter(([k, c]) => !c.start && !conceptUnlocked(k));
+    const locked = Object.entries(CONCEPTS).filter(([k, c]) => !c.start && c.price > 0 && (c.act ?? 1) <= (run.act ?? 1) && !conceptUnlocked(k));
     app().innerHTML = `<div class="room shop">
       <h2>⚖ Händler <small class="tag">💰 ${run.gold} Gold</small></h2>
       <div class="panel-title">Python-Konzepte (dauerhaft)</div>

@@ -93,6 +93,7 @@ function codeOnly(code) {
 }
 
 const KEYWORD_CONCEPT = { elif: 'elif', for: 'for', while: 'while' };
+const METHOD_CONCEPT = [[/\.(append|pop|insert|remove)\s*\(/, 'liste'], [/\.sort\s*\(|\bsorted\s*\(/, 'sort']];
 
 /**
  * Prüft vor dem Lauf: versiegelte Funktionen und noch nicht freigeschaltete Konzepte.
@@ -108,6 +109,9 @@ export function checkCode(code, { sealed = [], unlocked = null, conceptNames = {
       if (new RegExp(`\\b${kw}\\b`).test(c) && !unlocked.includes(concept)) {
         return `Das Konzept „${conceptNames[concept] ?? kw}“ ist noch nicht freigeschaltet. Du kannst es beim Händler lernen.`;
       }
+    }
+    for (const [re, concept] of METHOD_CONCEPT) {
+      if (re.test(c) && !unlocked.includes(concept)) return `Das Konzept „${conceptNames[concept] ?? concept}“ ist noch nicht freigeschaltet. Du kannst es beim Händler lernen.`;
     }
   }
   return null;

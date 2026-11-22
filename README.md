@@ -12,7 +12,16 @@ py -m http.server 8765
 
 (im Projektordner starten) und dann `http://localhost:8765` öffnen. Beim Start ist eine Internetverbindung nötig, weil Natter von jsDelivr geladen wird. Zum Hosten reicht jeder statische Webspace (z. B. GitHub Pages).
 
-## Inhalt des Prototyps (Akt 1)
+## Akte
+
+| Akt | Name | Thema | Besonderes |
+| --- | --- | --- | --- |
+| 1 | Die Höhle der Verzweigungen | Variablen, if/elif, for, while | Boss: Der Verzweiger |
+| 2 | Die Listengruben | append, pop, insert, Slicing, sum/max, sort | Kristall-Liste `kristalle` im Kampf; Gegner mit eigenen Listen; Boss: Der Mischer |
+
+Nach dem Boss eines Akts geht es in den nächsten (volle Heilung, Geschenk-Karten). Geplant: Stapel/Warteschlangen/Dictionaries mit Komplexität (Akt 3) und Klassen (Akt 4); Natter kann beides schon. Die Akt-2-Gegner nutzen vorerst umgefärbte Figuren aus Akt 1.
+
+## Inhalt des Prototyps
 
 - Drei Figuren mit eigenem Startdeck und eigenem Start-Relikt (Funkenmagierin, Steinwächter, Orakel)
 - Höhlenkarte als Knotengraph wie bei Slay the Spire, bei jedem Run neu erzeugt (10 Ebenen und Boss); Schmiede und Debug-Raum sind Abzweigungen, keine Pflicht

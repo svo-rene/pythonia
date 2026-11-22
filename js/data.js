@@ -410,3 +410,141 @@ export const STUFEN = [
   'Rastplätze heilen nur 10 statt 15.',
   'Der Boss hat 25 % mehr Leben.',
 ];
+
+// =====================================================================
+// AKT 2: Die Listengruben (Listen-Methoden und Sortieren)
+// Neue Spielvariable: kristalle (eine Liste, die im Kampf erhalten bleibt und als Kästchen zu sehen ist).
+// =====================================================================
+Object.assign(CONCEPTS, {
+  liste: { name: 'Listen-Methoden', act: 2, price: 0,
+    quiz: { code: 'k = [4, 9]\nk.append(2)\nx = k.pop()', frage: 'Welchen Wert hat x am Ende?', antwort: 2,
+      erklaerung: 'append(2) hängt die 2 hinten an: [4, 9, 2]. pop() nimmt das letzte Element heraus, also die 2.' } },
+  sort: { name: 'Sortieren', act: 2, price: 50,
+    quiz: { code: 'k = [7, 2, 5]\nk.sort()\nx = k[0] + k.pop()', frage: 'Welchen Wert hat x am Ende?', antwort: 9,
+      erklaerung: 'sort() ordnet aufsteigend: [2, 5, 7]. k[0] ist 2, pop() nimmt die 7. Zusammen 9.' } },
+});
+
+Object.assign(CARDS, {
+  kristall: { name: 'Kristall formen', cost: 1, concept: 'liste', type: 'skill',
+    code: 'kristalle.append(3 + staerke)\nblock += 3', text: 'Hängt einen Kristall (3 plus Stärke) hinten an deine Liste. Dazu 3 Block.',
+    up: { code: 'kristalle.append(5 + staerke)\nblock += 4', text: 'Kristall mit 5 plus Stärke, dazu 4 Block.' } },
+  kristallwurf: { name: 'Kristallwurf', cost: 1, concept: 'liste', type: 'angriff', target: true,
+    code: 'if len(kristalle) > 0:\n    ziel_leben -= kristalle.pop() * 2', text: 'Nimmt den letzten Kristall aus der Liste und wirft ihn: doppelter Wert als Schaden.',
+    up: { code: 'if len(kristalle) > 0:\n    ziel_leben -= kristalle.pop() * 3', text: 'Letzter Kristall, dreifacher Wert als Schaden.' } },
+  scheibe: { name: 'Scheibenschnitt', cost: 1, concept: 'liste', type: 'angriff', target: true,
+    code: 'ziel_leben -= sum(kristalle[:2]) + 2', text: 'Die ersten beiden Kristalle (kristalle[:2]) treffen zusammen, plus 2. Sie bleiben in der Liste.',
+    up: { code: 'ziel_leben -= sum(kristalle[:3]) + 2', text: 'Die ersten drei Kristalle treffen zusammen, plus 2.' } },
+  ordnen: { name: 'Ordnen', cost: 0, concept: 'sort', type: 'skill',
+    code: 'kristalle.sort()\nziehe(1)', text: 'Sortiert deine Kristalle aufsteigend: Der größte steht danach hinten. Du ziehst 1 Karte.',
+    up: { code: 'kristalle.sort()\nziehe(2)', text: 'Sortiert deine Kristalle und du ziehst 2 Karten.' } },
+  spitzenstein: { name: 'Spitzenstein', cost: 1, concept: 'sort', type: 'angriff', target: true,
+    code: 'if len(kristalle) > 0:\n    ziel_leben -= max(kristalle) + staerke', text: 'Der größte Kristall trifft, ohne verbraucht zu werden.',
+    up: { code: 'if len(kristalle) > 0:\n    ziel_leben -= max(kristalle) * 2', text: 'Der größte Kristall trifft doppelt, ohne verbraucht zu werden.' } },
+  kristallregen: { name: 'Kristallregen', cost: 2, concept: 'for', type: 'angriff', target: true,
+    code: 'for k in kristalle:\n    ziel_leben -= k\nkristalle = []', text: 'Alle Kristalle treffen nacheinander. Danach ist die Liste leer.',
+    up: { code: 'for k in kristalle:\n    ziel_leben -= k + 1\nkristalle = []', text: 'Alle Kristalle treffen mit je +1. Danach ist die Liste leer.' } },
+});
+
+Object.assign(ENEMIES, {
+  echofledermaus: { name: 'Echofledermaus', hp: 22, mem: { echo: [] },
+    code: 'echo.append(3)\nfor e in echo:\n    leben -= e' },
+  kristalldieb: { name: 'Kristalldieb', hp: 28,
+    code: 'if len(kristalle) > 0:\n    kristalle.pop()\n    leben -= 3\nelse:\n    leben -= 9' },
+  minenwurm: { name: 'Minenwurm', hp: 30, mem: { minen: [2, 8, 4] },
+    code: 'leben -= minen[0]\nminen.append(minen.pop(0) + 1)' },
+  zahlenhydra: { name: 'Zahlenhydra', hp: 64, elite: true, mem: { koepfe: [4] },
+    code: 'for k in koepfe:\n    leben -= k\nkoepfe.append(4)' },
+  mischer: { name: 'Der Mischer', hp: 130, boss: true, mem: { runde: 0, stapel: [9, 2, 6, 4] },
+    code: 'runde += 1\nkristalle.reverse()\nleben -= stapel.pop()\nstapel.insert(0, 5 + runde)' },
+});
+
+Object.assign(ENCOUNTERS, {
+  echo: ['echofledermaus'],
+  dieb: ['kristalldieb'],
+  wurm: ['minenwurm'],
+  echo_dieb: ['echofledermaus', 'kristalldieb'],
+  wurm_echo: ['minenwurm', 'echofledermaus'],
+  hydra: ['zahlenhydra'],
+  boss2: ['mischer'],
+});
+
+Object.assign(FORGES, {
+  stapler: {
+    titel: 'Doppelkristall', stufe: 'leicht', modus: 'parsons', konzepte: ['liste'],
+    auftrag: 'Hänge zwei neue Kristalle hinten an die Liste kristalle: zuerst einen mit dem Wert 4, dann einen mit 4 + staerke.',
+    zeilen: ['kristalle.append(4)', 'kristalle.append(4 + staerke)'],
+    falsch: ['kristalle = [4]'],
+    pruefe: ['kristalle'],
+    tests: [{ kristalle: [], staerke: 0 }, { kristalle: [2], staerke: 3 }],
+    hinweise: ['append hängt hinten an. Die Reihenfolge der Zeilen bestimmt die Reihenfolge in der Liste.', 'kristalle = [4] würde die ganze Liste ersetzen. Die alten Kristalle wären weg!', 'kristalle.append(4), dann kristalle.append(4 + staerke).'],
+    karte: { name: 'Doppelkristall', cost: 1, type: 'skill', text: 'Deine geschmiedete Karte: zwei neue Kristalle.' },
+  },
+  sortierschuss: {
+    titel: 'Sortierschuss', stufe: 'schwer', modus: 'frei', konzepte: ['liste', 'sort'], maxZeilen: 2,
+    auftrag: 'Sortiere die Kristalle aufsteigend. Nimm dann den größten (er steht jetzt hinten) mit pop() heraus und ziehe seinen Wert von ziel_leben ab.',
+    vorlage: '# Variablen: kristalle (Liste), ziel_leben\n',
+    loesung: 'kristalle.sort()\nziel_leben -= kristalle.pop()',
+    zeilen: ['kristalle.sort()', 'ziel_leben -= kristalle.pop()'],
+    falsch: ['ziel_leben -= kristalle.pop(0)'],
+    pruefe: ['kristalle', 'ziel_leben'],
+    tests: [{ kristalle: [3, 9, 5], ziel_leben: 30 }, { kristalle: [7], ziel_leben: 10 }, { kristalle: [2, 2, 8, 1], ziel_leben: 20 }],
+    hinweise: ['Erst sortieren, dann herausnehmen. Nach sort() steht der größte Wert ganz hinten.', 'pop() ohne Zahl nimmt das letzte Element. pop(0) nähme das erste, also das kleinste.', 'kristalle.sort()\nziel_leben -= …'],
+    karte: { name: 'Sortierschuss', cost: 1, type: 'angriff', target: true, text: 'Deine geschmiedete Karte: wirft immer den größten Kristall.' },
+  },
+  durchzaehlen: {
+    titel: 'Kristallschild', stufe: 'leicht', modus: 'parsons', konzepte: ['for', 'liste'],
+    auftrag: 'Gehe mit einer Schleife durch alle Kristalle. Jeder Kristall gibt dir so viel Block, wie er wert ist. Die Kristalle bleiben in der Liste.',
+    zeilen: ['for k in kristalle:', '    block += k'],
+    falsch: ['    block = k'],
+    pruefe: ['block', 'kristalle'],
+    tests: [{ kristalle: [3, 5], block: 0 }, { kristalle: [], block: 4 }, { kristalle: [1, 1, 6], block: 2 }],
+    hinweise: ['k ist in jedem Durchlauf ein anderer Kristall.', 'block = k würde den Block jedes Mal überschreiben. Du willst addieren.', 'for k in kristalle:, eingerückt block += k.'],
+    karte: { name: 'Kristallschild', cost: 1, type: 'skill', text: 'Deine geschmiedete Karte: Block in Höhe aller Kristalle.' },
+  },
+  zwillinge: {
+    titel: 'Zwillingskristall', stufe: 'schwer', modus: 'frei', konzepte: ['for', 'liste'], maxZeilen: 2,
+    auftrag: 'Verdopple jeden Kristall in der Liste. Achtung: Die Werte in der Liste selbst müssen sich ändern.',
+    vorlage: '# Variable: kristalle (Liste)\n',
+    loesung: 'for i in range(len(kristalle)):\n    kristalle[i] *= 2',
+    zeilen: ['for i in range(len(kristalle)):', '    kristalle[i] *= 2'],
+    falsch: ['    k *= 2'],
+    pruefe: ['kristalle'],
+    tests: [{ kristalle: [3, 5] }, { kristalle: [] }, { kristalle: [1, 4, 2] }],
+    hinweise: ['Mit for k in kristalle: bekommst du nur eine Kopie des Werts. k *= 2 ändert die Liste nicht!', 'Du brauchst die Position: for i in range(len(kristalle)):', 'Dann kristalle[i] *= 2.'],
+    karte: { name: 'Zwillingskristall', cost: 1, type: 'skill', text: 'Deine geschmiedete Karte: verdoppelt alle Kristalle.' },
+  },
+});
+
+Object.assign(RIDDLES, {
+  popappend: { concept: 'liste', var: 'x', code: 'k = [5, 1]\nk.append(8)\nx = k.pop() + k.pop()',
+    erklaerung: 'Nach append: [5, 1, 8]. Das erste pop() nimmt 8, das zweite nimmt 1. Zusammen 9.' },
+  vorne: { concept: 'liste', var: 'x', code: 'k = [6, 3, 9]\nk.pop(0)\nx = k[0]',
+    erklaerung: 'pop(0) nimmt das erste Element (6) heraus. Danach ist k = [3, 9], und k[0] ist 3.' },
+  scheibe: { concept: 'liste', var: 's', code: 'k = [2, 7, 4, 1]\ns = sum(k[1:3])',
+    erklaerung: 'k[1:3] sind die Positionen 1 und 2 (die 3 nicht mehr): [7, 4]. Die Summe ist 11.' },
+  sortiert: { concept: 'sort', var: 'x', code: 'k = [8, 3, 5]\nk.sort()\nx = k[1]',
+    erklaerung: 'sort() macht daraus [3, 5, 8]. An Position 1 steht 5.' },
+  hinten: { concept: 'liste', var: 'x', code: 'k = [4, 9, 2]\nx = k[-1] * 2',
+    erklaerung: 'k[-1] ist das letzte Element, also 2. Mal 2 gibt 4.' },
+});
+
+export const MAP_PLAN_2 = [
+  { typ: 'kampf', pool: ['echo', 'dieb'] },
+  { zufall: { kampf: 3, raetsel: 2, haendler: 1 }, pool: ['echo', 'dieb', 'wurm'] },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['echo', 'dieb', 'wurm'], forges: ['stapler', 'sortierschuss'] },
+  { zufall: { kampf: 3, elite: 2, rast: 1 }, pool: ['wurm', 'dieb', 'echo'], elite: 'hydra' },
+  { zufall: { haendler: 1, rast: 1, raetsel: 1 } },
+  { zufall: { debug: 1, kampf: 1, rast: 1 }, pool: ['echo_dieb', 'wurm'] },
+  { zufall: { kampf: 3, elite: 1, raetsel: 1 }, pool: ['echo_dieb', 'wurm_echo'], elite: 'hydra' },
+  { zufall: { schmiede: 2, kampf: 2 }, pool: ['echo_dieb', 'wurm_echo'], forges: ['durchzaehlen', 'zwillinge'] },
+  { zufall: { kampf: 2, haendler: 1, raetsel: 1 }, pool: ['wurm_echo', 'echo_dieb'] },
+  { typ: 'rast' },
+];
+
+export const ACTS = {
+  1: { name: 'Die Höhle der Verzweigungen', plan: MAP_PLAN, boss: 'boss', thema: 'if, Schleifen und Variablen' },
+  2: { name: 'Die Listengruben', plan: MAP_PLAN_2, boss: 'boss2', thema: 'Listen-Methoden und Sortieren',
+    intro: 'In den Listengruben sammelst du Kristalle in einer Liste. Mit append() kommen sie hinten dazu, pop() nimmt den letzten heraus, sort() ordnet sie. Gegner hier haben selbst Listen, und manche stehlen deine Kristalle!',
+    geschenk: ['kristall', 'kristall', 'kristallwurf'], konzept: 'liste' },
+};
+Object.assign(FORGE_LEVEL, { stapler: 'leicht', sortierschuss: 'schwer', durchzaehlen: 'leicht', zwillinge: 'schwer' });

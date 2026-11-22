@@ -1,5 +1,5 @@
 // Spielstand: dauerhafte Daten (meta) und der laufende Run (run). Gespeichert im Browser.
-import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_PLAN, MAP_COLS, RELICS } from './data.js';
+import { CARDS, BUGS, HEROES, CONCEPTS, TALENTS, MAP_COLS, RELICS, ACTS } from './data.js';
 
 const KEY = 'zauberlehrling-v1';   // alter Projektname, bleibt, damit Spielstände erhalten bleiben
 
@@ -34,7 +34,7 @@ export function load() {
     game.meta = { ...newMeta(), ...data.meta, settings: { ...newMeta().settings, ...(data.meta?.settings ?? {}) } };
     game.meta.book = { ...newMeta().book, ...(data.meta?.book ?? {}) };
     game.run = data.run?.map ? data.run : null;   // Runs aus der alten Kartenversion verwerfen
-    if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; }
+    if (game.run) { game.run.relics ??= Object.keys(RELICS).filter((k) => RELICS[k].start === game.run.hero); game.run.stats ??= newStats(); game.run.stufe ??= 0; game.run.act ??= 1; }
   } catch { /* kaputter Spielstand: neu anfangen */ }
 }
 
@@ -108,6 +108,7 @@ export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
     seed: seedCode ? hashSeed(seedCode) : Math.floor(Math.random() * 2 ** 31),
     seedCode,
     stufe,
+    act: 1,
     relics: Object.keys(RELICS).filter((k) => RELICS[k].start === heroId),
     stats: newStats(),
     hero: heroId,
@@ -138,13 +139,14 @@ export function newRun(heroId = 'magierin', { seedCode = '', stufe = 0 } = {}) {
   game.run.deck = deck;
   for (const c of deck) noteBook('cards', c.id);
   for (const r of game.run.relics) noteBook('relics', r);
-  game.run.map = generateMap();
+  game.run.map = generateMap(1);
   game.meta.runs++;
   save();
 }
 
 /** Höhlenkarte wie bei Slay the Spire: 4 Pfade laufen von unten nach oben, ohne sich zu kreuzen. */
-function generateMap() {
+function generateMap(act) {
+  const MAP_PLAN = ACTS[act].plan;
   const rows = MAP_PLAN.length;
   const edges = new Set();
   const used = new Set();
@@ -175,7 +177,7 @@ function generateMap() {
       }
       const node = { id, r, c, typ, x: ((c + 0.5) / MAP_COLS) * 100 + (rng() * 8 - 4), y: rng() * 16 - 8 };
       if (typ === 'kampf') node.enc = pick(plan.pool);
-      if (typ === 'elite') node.enc = 'schlange';
+      if (typ === 'elite') node.enc = plan.elite ?? 'schlange';
       nodes[id] = node;
     });
     // Schmiede-Reihen: mindestens eine Schmiede, damit man sie ansteuern kann, aber keine Pflicht
@@ -189,10 +191,25 @@ function generateMap() {
       row.filter((n) => n.typ === 'schmiede').forEach((n, k) => { n.forge = plan.forges[k % plan.forges.length]; });
     }
   }
-  nodes.boss = { id: 'boss', r: rows, c: 2, typ: 'boss', enc: 'boss', x: 50, y: 0 };
+  nodes.boss = { id: 'boss', r: rows, c: 2, typ: 'boss', enc: ACTS[act].boss, x: 50, y: 0 };
   const edgeList = [...edges].map((e) => e.split('>'));
   for (const id of Object.keys(nodes)) if (nodes[id].r === rows - 1) edgeList.push([id, 'boss']);
   return { rows: rows + 1, nodes, edges: edgeList };
+}
+
+/** Nächster Akt: neue Höhle, volle Heilung, Geschenk-Karten und das neue Grundkonzept. */
+export function startNextAct() {
+  const run = game.run;
+  run.act++;
+  const a = ACTS[run.act];
+  run.map = generateMap(run.act);
+  run.pos = null;
+  run.path = [];
+  run.pending = null;
+  run.hp = run.maxHp;
+  for (const id of a.geschenk ?? []) { run.deck.push(makeCard(id)); noteBook('cards', id); }
+  if (a.konzept && !game.meta.concepts.includes(a.konzept)) game.meta.concepts.push(a.konzept);
+  save();
 }
 
 /** Knoten, die man vom aktuellen Standort aus betreten kann. */
